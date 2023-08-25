@@ -25,11 +25,11 @@ char* generate_random_string() {
     return random_string;
 }
 
-int warmup(NetworkContext* pHandler)
+int warmup(KvHandle* pHandler)
 {
     char* key = generate_random_string();
     printf("key %s\n", key);
-    const int value_size = MAX_EAGER_MSG_SIZE - STRING_LENGTH - 1;
+    const int value_size = MAX_EAGER_SIZE - STRING_LENGTH - 1;
     char *value = malloc(value_size);
     memset(value, 'A', value_size - 1);
     value[value_size - 1] = '\0';
@@ -49,7 +49,7 @@ int warmup(NetworkContext* pHandler)
     return 0;
 }
 
-void measure_eager_throughput(NetworkContext * pHandler)
+void measure_eager_throughput(KvHandle * pHandler)
 {
     const int total_requests = 100;
     int value_sizes[] = {1022, 2046, 4095};
@@ -94,13 +94,11 @@ int main(int argc, char *argv[])
             return 1;
         }
 
-        NetworkContext handler;
-        memset(&handler, 0, sizeof(NetworkContext));
-//        handler.size = MAX_BUF_SIZE * sizeof(char);
-//        handler.gidx = -1;
-        NetworkContext* my_kv = &handler;
+        KvHandle handler;
+        memset(&handler, 0, sizeof(KvHandle));
+        KvHandle* networkContext = &handler;
 
-        if (init_network_context(my_kv, servername) != 0)
+        if (init_network_context(networkContext, servername) != 0)
         {
             fprintf(stderr, "Couldn't init Kv_handle");
             return 1;
@@ -108,35 +106,41 @@ int main(int argc, char *argv[])
 
         if (servername)
         {
-            if (kv_open(servername, (void **) &my_kv) != 0)
+            if(init_client_post_recv(networkContext)){
+                return 1;
+            }
+
+            if (kv_open(servername, (void **) &networkContext) != 0)
             {
                 fprintf(stderr, "Client couldn't connect\n");
                 return 1;
             }
 
-            measure_eager_throughput(my_kv);
+            measure_eager_throughput(networkContext);
             const char *key = "yossef";
             const char *value = "Chaim";
 
-            if (kv_set((void *)my_kv, key, value) != 0)
+            if (kv_set((void *)networkContext, key, value) != 0)
             {
                 return 1;
             }
 
             char *received_value = NULL;
-            if (kv_get((void *)my_kv, key, &received_value) != 0)
+            if (kv_get((void *)networkContext, key, &received_value) != 0)
             {
                 fprintf(stderr, "Client failed to preform get\n");
                 return 1;
             }
+
             printf("Client got val: %s\n", received_value);
             kv_release(received_value);
-            }
+        }
+
         else
         {
-            start_server((void *) my_kv);
+            start_server((void *) networkContext);
             for (int i = 0; i < NUM_OF_CLIENTS; ++i) {
-//                pp_close_ctx((my_kv)->clients_ctx[i]);
+//                pp_close_ctx((networkContext)->clients_ctx[i]);
             }
         }
 

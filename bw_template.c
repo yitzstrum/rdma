@@ -15,14 +15,11 @@
 #include "bw_template.h"
 #include "db.h"
 
-const int RX_DEPTH = 100;
-const int TX_DEPTH = 100;
-const int SL = 0;
 const enum ibv_mtu MTU = IBV_MTU_2048;
 
 
 //init
-int init_dev_list(NetworkContext* my_kv){
+int init_dev_list(KvHandle* my_kv){
     my_kv->dev_list = ibv_get_device_list(NULL);
     if (!my_kv->dev_list) {
         perror("Failed to get IB devices list");
@@ -31,7 +28,7 @@ int init_dev_list(NetworkContext* my_kv){
     return 0;
 }
 
-int init_context(NetworkContext* my_kv){
+int init_context(KvHandle* my_kv){
     struct ibv_device* ib_dev = *my_kv->dev_list;
     if (!ib_dev) {
         fprintf(stderr, "No IB devices found\n");
@@ -46,7 +43,7 @@ int init_context(NetworkContext* my_kv){
     return 0;
 }
 
-struct ibv_cq* init_cq(NetworkContext *networkContext)
+struct ibv_cq* init_cq(KvHandle *networkContext)
 {
     int numOfCq = networkContext->if_server ? NUM_OF_CLIENTS : 1;
     struct ibv_cq* cq = ibv_create_cq(networkContext->context, numOfCq * (RX_DEPTH + TX_DEPTH), NULL,
@@ -67,7 +64,7 @@ void init_resource2(struct pingpong_context *ctx){
     }
 }
 
-int init_pd(struct pingpong_context *ctx, NetworkContext* networkContext){
+int init_pd(struct pingpong_context *ctx, KvHandle* networkContext){
     ctx->pd = ibv_alloc_pd(networkContext->context);
     if (!ctx->pd) {
         fprintf(stderr, "Couldn't allocate PD\n");
@@ -75,8 +72,8 @@ int init_pd(struct pingpong_context *ctx, NetworkContext* networkContext){
     }
     return 0;
 }
-int init_buf(struct pingpong_context *ctx, NetworkContext* pHandler, int page_size){
-    //    todo roundup
+
+int init_buf(struct pingpong_context *ctx, KvHandle* pHandler, int page_size){
     ctx->buf = malloc(roundup(pHandler->size, page_size));
     if (!ctx->buf) {
         fprintf(stderr, "Couldn't allocate work buf.\n");
@@ -84,9 +81,10 @@ int init_buf(struct pingpong_context *ctx, NetworkContext* pHandler, int page_si
     }
     return 0;
 }
+
 struct ibv_mr* init_mr(struct ibv_pd* pd, void* buf, size_t size, enum ibv_access_flags access)
 {
-    struct ibv_mr* mr =ibv_reg_mr(pd, buf, size, access);
+    struct ibv_mr* mr = ibv_reg_mr(pd, buf, size, access);
     if (!mr) {
         fprintf(stderr, "Couldn't register MR\n");
         return NULL;
@@ -95,20 +93,6 @@ struct ibv_mr* init_mr(struct ibv_pd* pd, void* buf, size_t size, enum ibv_acces
     return mr;
 }
 
-//int init_mr(struct pingpong_context *ctx, size_t size, enum ibv_access_flags access)
-//{
-////    todo change
-//    struct ibv_mr* mr =ibv_reg_mr(ctx->pd, ctx->buf, size, access);
-//    if (!mr) {
-//        fprintf(stderr, "Couldn't register MR\n");
-//        return 1;
-//    }
-//    ctx->mr=mr;
-//    if (!ctx->mr) {return 1;}
-//    return 0;
-//}
-
-//todo
 struct ibv_qp* init_qp(struct pingpong_context* ctx)
 {
     struct ibv_qp* qp;
@@ -154,7 +138,7 @@ struct ibv_qp* init_qp(struct pingpong_context* ctx)
     return qp;
 }
 
-struct pingpong_context *pp_init_ctx(NetworkContext* networkContext, struct ibv_cq* cq)
+struct pingpong_context *pp_init_ctx(KvHandle* kv_handle, struct ibv_cq* cq)
 {
     struct pingpong_context *ctx;
     int page_size = sysconf(_SC_PAGESIZE);
@@ -163,20 +147,21 @@ struct pingpong_context *pp_init_ctx(NetworkContext* networkContext, struct ibv_
     if (!ctx) {return NULL;}
 
     ctx->cq = cq;
-//    todo
+
+    // TODO: Implement multiple clients
     init_resource2(ctx);
-    ctx->size     = networkContext->size;
+
+    ctx->size     = kv_handle->size;
     ctx->rx_depth = RX_DEPTH;
-    ctx->routs    = RX_DEPTH;
+//    ctx->routs    = RX_DEPTH;
     ctx->channel = NULL;
 
-    if(init_buf(ctx, networkContext, page_size)){return NULL;}
-    memset(ctx->buf, 0, networkContext->size);
+    if(init_buf(ctx, kv_handle, page_size)){return NULL;}
+    memset(ctx->buf, 0, kv_handle->size);
 
-    if(init_pd(ctx, networkContext)){return NULL;}
-//todo mr
-    //    if(init_mr(ctx, networkContext->size, IBV_ACCESS_LOCAL_WRITE)){return NULL;}
-    ctx->mr = init_mr(ctx->pd, ctx->buf, networkContext->size, IBV_ACCESS_LOCAL_WRITE);
+    if(init_pd(ctx, kv_handle)){return NULL;}
+
+    ctx->mr = init_mr(ctx->pd, ctx->buf, kv_handle->size, IBV_ACCESS_LOCAL_WRITE);
     if (!ctx->mr) {return NULL;}
 
     ctx->qp = init_qp(ctx);
@@ -184,7 +169,7 @@ struct pingpong_context *pp_init_ctx(NetworkContext* networkContext, struct ibv_
     return ctx;
 }
 
-int get_port_info(NetworkContext* networkContext){
+int get_port_info(KvHandle* networkContext){
     if (ibv_query_port(networkContext->context, IB_PORT, &networkContext->ctx->portinfo)) {
         fprintf(stderr, "Couldn't get port info\n");
         return 1;
@@ -192,7 +177,7 @@ int get_port_info(NetworkContext* networkContext){
     return 0;
 }
 
-int get_local_lid(NetworkContext* networkContext){
+int get_local_lid(KvHandle* networkContext){
     networkContext->my_dest.lid = networkContext->ctx->portinfo.lid;
     if (networkContext->ctx->portinfo.link_layer == IBV_LINK_LAYER_INFINIBAND && !networkContext->my_dest.lid) {
         fprintf(stderr, "Couldn't get local LID\n");
@@ -201,7 +186,7 @@ int get_local_lid(NetworkContext* networkContext){
     return 0;
 }
 
-int check_gidX(NetworkContext* networkContext){
+int check_gidX(KvHandle* networkContext){
     if (networkContext->gidx >= 0) {
         if (ibv_query_gid(networkContext->context, IB_PORT, networkContext->gidx, &networkContext->my_dest.gid)) {
             fprintf(stderr, "Could not get local gid for gid index %d\n", networkContext->gidx);
@@ -238,16 +223,16 @@ int pp_post_recv_client(struct pingpong_context *ctx, int n)
     return i;
 }
 
-int init_client_post_recv(NetworkContext* my_kv){
-    my_kv->ctx->routs = pp_post_recv_client(my_kv->ctx, my_kv->ctx->rx_depth);
-    if (my_kv->ctx->routs < my_kv->ctx->rx_depth) {
-        fprintf(stderr, "Couldn't post receive (%d)\n", my_kv->ctx->routs);
+int init_client_post_recv(KvHandle* networkContext){
+    networkContext->ctx->routs = pp_post_recv_client(networkContext->ctx, networkContext->ctx->rx_depth);
+    if (networkContext->ctx->routs < networkContext->ctx->rx_depth) {
+        fprintf(stderr, "Couldn't post receive (%d)\n", networkContext->ctx->routs);
         return 1;
     }
     return 0;
 }
 
-int init_network_context(NetworkContext* networkContext, const char* servername)
+int init_network_context(KvHandle* networkContext, const char* servername)
 {
     networkContext->if_server = servername ? 0 : 1 ;
     char gid[33];
@@ -276,11 +261,6 @@ int init_network_context(NetworkContext* networkContext, const char* servername)
     printf("  local address:  LID 0x%04x, QPN 0x%06x, PSN 0x%06x, GID %s\n",
            networkContext->my_dest.lid, networkContext->my_dest.qpn, networkContext->my_dest.psn, gid);
 
-    if(servername){
-        if(init_client_post_recv(networkContext)){
-            return 1;
-        }
-    }
     return 0;
 }
 
@@ -447,7 +427,7 @@ int add_work_recv(struct pingpong_context* ctx)
     return 0;
 }
 
-int pull_cq(NetworkContext * pHandler, struct ibv_wc *wc, int iters)
+int pull_cq(KvHandle * pHandler, struct ibv_wc *wc, int iters)
 {
     for (int i = 0; i < iters; ++i)
     {
@@ -491,7 +471,7 @@ int pp_post_send(struct pingpong_context *ctx, bool is_server)
     return ibv_post_send(ctx->qp, &wr, &bad_wr);
 }
 
-size_t parse_header(const void* buf, enum Protocol* protocol, enum Operation_t* operation, size_t* key_size, size_t* val_size) {
+size_t parse_header(const void* buf, enum Protocol* protocol, enum OperationType* operation, size_t* key_size, size_t* val_size) {
     uint8_t protocol_val;
     uint8_t operation_val;
     uint32_t key_size_val;
@@ -510,7 +490,7 @@ size_t parse_header(const void* buf, enum Protocol* protocol, enum Operation_t* 
     memcpy(&val_size_val, buffer, sizeof(val_size_val));
 
     *protocol = (enum Protocol)protocol_val;
-    *operation = (enum Operation_t)operation_val;
+    *operation = (enum OperationType)operation_val;
     *key_size = (size_t)key_size_val;
     *val_size = (size_t)val_size_val;
     printf("arg: pr op key val %d %d %zu %zu\n",*protocol,*operation,*key_size,*val_size);
@@ -519,7 +499,7 @@ size_t parse_header(const void* buf, enum Protocol* protocol, enum Operation_t* 
 }
 
 //set and get
-size_t create_header(void* buf, enum Protocol protocol, enum Operation_t operation, size_t key_size, size_t val_size) {
+size_t create_header(void* buf, enum Protocol protocol, enum OperationType operation, size_t key_size, size_t val_size) {
     uint8_t protocol_val = (uint8_t)protocol;
     uint8_t operation_val = (uint8_t)operation;
     uint32_t key_size_val = (uint32_t)key_size;
@@ -541,17 +521,17 @@ size_t create_header(void* buf, enum Protocol protocol, enum Operation_t operati
     return sizeof(uint8_t) + sizeof(uint8_t) + sizeof(uint32_t) + sizeof(uint32_t);
 }
 
-int pp_post_send_and_wait(NetworkContext *pHandler, struct pingpong_context* ctx, struct ibv_wc* wc, int iters, bool is_server)
+int pp_post_send_and_wait(KvHandle *kv_handle, struct pingpong_context* ctx, struct ibv_wc* wc, int iters)
 {
     struct ibv_wc tmp;
     struct ibv_wc* completion_work = wc == NULL ? &tmp : wc;
 
-    if (pp_post_send(ctx, is_server) != 0 || pull_cq(pHandler, completion_work, iters) != 0)
+    if (pp_post_send(kv_handle->ctx, kv_handle->if_server) != 0 || pull_cq(kv_handle, completion_work, iters) != 0)
     {
         return 1;
     }
 
-    if (completion_work->opcode == IBV_WC_RECV && !is_server && add_work_recv(ctx) != 0)
+    if (completion_work->opcode == IBV_WC_RECV && !is_server && add_work_recv(kv_handle->ctx) != 0)
     {
         return 1;
     }
@@ -622,7 +602,7 @@ int pp_post_recv_server(struct pingpong_context *ctx, int rx)
 
 
 
-int get_client_identifier(NetworkContext * pHandler, uint32_t src_qp)
+int get_client_identifier(KvHandle * pHandler, uint32_t src_qp)
 {
 //    todo
     for (int i = 0; i < NUM_OF_CLIENTS; ++i) {

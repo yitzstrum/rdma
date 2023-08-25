@@ -10,9 +10,9 @@
 #include "Server.h"
 #include "db.h"
 
-int init_clients_ctx(My_kv* my_kv,int i){
-    my_kv->clients_ctx[i] = pp_init_ctx(my_kv, my_kv->ctx->cq);
-    if (my_kv->clients_ctx[i] == NULL)
+int init_clients_ctx(KvHandle* networkContext, int i){
+    networkContext->clients_ctx[i] = pp_init_ctx(networkContext, networkContext->ctx->cq);
+    if (networkContext->clients_ctx[i] == NULL)
     {
         fprintf(stderr, "Server failed to connect clients, ctx is null\n");
         return 1;
@@ -20,45 +20,45 @@ int init_clients_ctx(My_kv* my_kv,int i){
     return 0;
 }
 
-int init_clients_routs(My_kv* my_kv, int i){
-    my_kv->clients_ctx[i]->routs = pp_post_recv_server(my_kv->clients_ctx[i], my_kv->clients_ctx[i]->rx_depth);
-    if (my_kv->clients_ctx[i]->routs < my_kv->clients_ctx[i]->rx_depth) {
-        fprintf(stderr, "Couldn't post receive (%d)\n", my_kv->clients_ctx[i]->routs);
-        ibv_destroy_qp(my_kv->clients_ctx[i]->qp);
+int init_clients_routs(KvHandle* networkContext, int i){
+    networkContext->clients_ctx[i]->routs = pp_post_recv_server(networkContext->clients_ctx[i], networkContext->clients_ctx[i]->rx_depth);
+    if (networkContext->clients_ctx[i]->routs < networkContext->clients_ctx[i]->rx_depth) {
+        fprintf(stderr, "Couldn't post receive (%d)\n", networkContext->clients_ctx[i]->routs);
+        ibv_destroy_qp(networkContext->clients_ctx[i]->qp);
         return 1;
     }
     return 0;
 }
 
-int init_clients_dest(My_kv* my_kv,int i){
+int init_clients_dest(KvHandle* networkContext, int i){
 //    todo
-    my_kv->my_dest.qpn = my_kv->clients_ctx[i]->qp->qp_num;
-    my_kv->rem_dest = pp_server_exch_dest(my_kv->clients_ctx[i]->qp, &my_kv->my_dest, my_kv->gidx);
-    if (!my_kv->rem_dest) {
+    networkContext->my_dest.qpn = networkContext->clients_ctx[i]->qp->qp_num;
+    networkContext->rem_dest = pp_server_exch_dest(networkContext->clients_ctx[i]->qp, &networkContext->my_dest, networkContext->gidx);
+    if (!networkContext->rem_dest) {
         return 1;
     }
     return 0;
 }
 
-int connect_to_clients(My_kv* my_kv)
+int connect_to_clients(KvHandle* networkContext)
 {
     for (int i = 0; i < NUM_OF_CLIENTS; ++i) {
-        if(init_clients_ctx(my_kv,i)){return 1;}
-        if(init_clients_routs(my_kv,i)){return 1;}
-        if(init_clients_dest(my_kv,i)){return 1;}
-        inet_ntop(AF_INET6, &my_kv->rem_dest->gid, my_kv->gid, sizeof(my_kv->gid));
+        if(init_clients_ctx(networkContext, i)){return 1;}
+        if(init_clients_routs(networkContext, i)){return 1;}
+        if(init_clients_dest(networkContext, i)){return 1;}
+        inet_ntop(AF_INET6, &networkContext->rem_dest->gid, networkContext->gid, sizeof(networkContext->gid));
         printf("  remote address: LID 0x%04x, QPN 0x%06x, PSN 0x%06x, GID %s\n",
-               my_kv->rem_dest->lid, my_kv->rem_dest->qpn, my_kv->rem_dest->psn, my_kv->gid);
+               networkContext->rem_dest->lid, networkContext->rem_dest->qpn, networkContext->rem_dest->psn, networkContext->gid);
     }
     return 0;
 }
 
 void start_server(void* obj){
-    My_kv *pHandler = ((My_kv *) obj);
-    DB *hashTable = initializeHashTable();
+    KvHandle *pHandler = ((KvHandle *) obj);
+    HashTable *hashTable = initializeHashTable();
 
     enum Protocol protocol;
-    enum Operation_t operation;
+    enum OperationType operation;
     size_t key_size;
     size_t val_size;
     int client_idx;
