@@ -1,5 +1,3 @@
-
-
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,7 +13,7 @@
 #include <time.h>
 #include <infiniband/verbs.h>
 #include "bw_template.h"
-#include "DB.h"
+#include "db.h"
 
 const int RX_DEPTH = 100;
 const int TX_DEPTH = 100;
@@ -24,7 +22,7 @@ const enum ibv_mtu MTU = IBV_MTU_2048;
 
 
 //init
-int init_dev_list(My_kv* my_kv){
+int init_dev_list(NetworkContext* my_kv){
     my_kv->dev_list = ibv_get_device_list(NULL);
     if (!my_kv->dev_list) {
         perror("Failed to get IB devices list");
@@ -33,7 +31,7 @@ int init_dev_list(My_kv* my_kv){
     return 0;
 }
 
-int init_context(My_kv* my_kv){
+int init_context(NetworkContext* my_kv){
     struct ibv_device* ib_dev = *my_kv->dev_list;
     if (!ib_dev) {
         fprintf(stderr, "No IB devices found\n");
@@ -48,10 +46,10 @@ int init_context(My_kv* my_kv){
     return 0;
 }
 
-struct ibv_cq* init_cq(My_kv *pHandler)
+struct ibv_cq* init_cq(NetworkContext *networkContext)
 {
-//    todo cqe
-    struct ibv_cq* cq = ibv_create_cq(pHandler->context, 3*(RX_DEPTH + TX_DEPTH), NULL,
+    int numOfCq = networkContext->if_server ? NUM_OF_CLIENTS : 1;
+    struct ibv_cq* cq = ibv_create_cq(networkContext->context, numOfCq * (RX_DEPTH + TX_DEPTH), NULL,
                                       NULL, 0);
     if (!cq) {
         fprintf(stderr, "Couldn't create CQ\n");
@@ -69,15 +67,15 @@ void init_resource2(struct pingpong_context *ctx){
     }
 }
 
-int init_pd(struct pingpong_context *ctx,My_kv* pHandler){
-    ctx->pd = ibv_alloc_pd(pHandler->context);
+int init_pd(struct pingpong_context *ctx, NetworkContext* networkContext){
+    ctx->pd = ibv_alloc_pd(networkContext->context);
     if (!ctx->pd) {
         fprintf(stderr, "Couldn't allocate PD\n");
         return 1;
     }
     return 0;
 }
-int init_buf(struct pingpong_context *ctx,My_kv* pHandler,int page_size){
+int init_buf(struct pingpong_context *ctx, NetworkContext* pHandler, int page_size){
     //    todo roundup
     ctx->buf = malloc(roundup(pHandler->size, page_size));
     if (!ctx->buf) {
@@ -156,7 +154,7 @@ struct ibv_qp* init_qp(struct pingpong_context* ctx)
     return qp;
 }
 
-struct pingpong_context *pp_init_ctx(My_kv* pHandler, struct ibv_cq* cq)
+struct pingpong_context *pp_init_ctx(NetworkContext* networkContext, struct ibv_cq* cq)
 {
     struct pingpong_context *ctx;
     int page_size = sysconf(_SC_PAGESIZE);
@@ -167,56 +165,50 @@ struct pingpong_context *pp_init_ctx(My_kv* pHandler, struct ibv_cq* cq)
     ctx->cq = cq;
 //    todo
     init_resource2(ctx);
-    ctx->size     = pHandler->size;
+    ctx->size     = networkContext->size;
     ctx->rx_depth = RX_DEPTH;
     ctx->routs    = RX_DEPTH;
     ctx->channel = NULL;
 
-    if(init_buf(ctx,pHandler,page_size)){return NULL;}
-    memset(ctx->buf, 0, pHandler->size);
+    if(init_buf(ctx, networkContext, page_size)){return NULL;}
+    memset(ctx->buf, 0, networkContext->size);
 
-    if(init_pd(ctx,pHandler)){return NULL;}
+    if(init_pd(ctx, networkContext)){return NULL;}
 //todo mr
-    //    if(init_mr(ctx, pHandler->size, IBV_ACCESS_LOCAL_WRITE)){return NULL;}
-    ctx->mr = init_mr(ctx->pd, ctx->buf, pHandler->size, IBV_ACCESS_LOCAL_WRITE);
+    //    if(init_mr(ctx, networkContext->size, IBV_ACCESS_LOCAL_WRITE)){return NULL;}
+    ctx->mr = init_mr(ctx->pd, ctx->buf, networkContext->size, IBV_ACCESS_LOCAL_WRITE);
     if (!ctx->mr) {return NULL;}
 
     ctx->qp = init_qp(ctx);
     if (!ctx->qp) {return NULL;}
     return ctx;
 }
-//int pp_get_port_info(struct ibv_context *context, int port,
-//                     struct ibv_port_attr *attr)
-//{
-//    return ibv_query_port(context, port, attr);
-//}
-int get_port(My_kv* my_kv){
-    if (ibv_query_port(my_kv->context, IB_PORT, &my_kv->ctx->portinfo)) {
-//    if (pp_get_port_info(my_kv->context, IB_PORT, &my_kv->ctx->portinfo)) {
+
+int get_port_info(NetworkContext* networkContext){
+    if (ibv_query_port(networkContext->context, IB_PORT, &networkContext->ctx->portinfo)) {
         fprintf(stderr, "Couldn't get port info\n");
         return 1;
     }
     return 0;
 }
 
-int get_local_lid(My_kv* my_kv){
-    my_kv->my_dest.lid = my_kv->ctx->portinfo.lid;
-    if (my_kv->ctx->portinfo.link_layer == IBV_LINK_LAYER_INFINIBAND && !my_kv->my_dest.lid) {
+int get_local_lid(NetworkContext* networkContext){
+    networkContext->my_dest.lid = networkContext->ctx->portinfo.lid;
+    if (networkContext->ctx->portinfo.link_layer == IBV_LINK_LAYER_INFINIBAND && !networkContext->my_dest.lid) {
         fprintf(stderr, "Couldn't get local LID\n");
         return 1;
     }
     return 0;
 }
 
-int check_gidX(My_kv* my_kv){
-//    todo what this func?
-    if (my_kv->gidx >= 0) {
-        if (ibv_query_gid(my_kv->context, IB_PORT, my_kv->gidx, &my_kv->my_dest.gid)) {
-            fprintf(stderr, "Could not get local gid for gid index %d\n", my_kv->gidx);
+int check_gidX(NetworkContext* networkContext){
+    if (networkContext->gidx >= 0) {
+        if (ibv_query_gid(networkContext->context, IB_PORT, networkContext->gidx, &networkContext->my_dest.gid)) {
+            fprintf(stderr, "Could not get local gid for gid index %d\n", networkContext->gidx);
             return 1;
         }
     } else {
-        memset(&my_kv->my_dest.gid, 0, sizeof my_kv->my_dest.gid);
+        memset(&networkContext->my_dest.gid, 0, sizeof networkContext->my_dest.gid);
     }
     return 0;
 }
@@ -246,7 +238,7 @@ int pp_post_recv_client(struct pingpong_context *ctx, int n)
     return i;
 }
 
-int init_client_post_recv(My_kv* my_kv){
+int init_client_post_recv(NetworkContext* my_kv){
     my_kv->ctx->routs = pp_post_recv_client(my_kv->ctx, my_kv->ctx->rx_depth);
     if (my_kv->ctx->routs < my_kv->ctx->rx_depth) {
         fprintf(stderr, "Couldn't post receive (%d)\n", my_kv->ctx->routs);
@@ -255,37 +247,37 @@ int init_client_post_recv(My_kv* my_kv){
     return 0;
 }
 
-int init_my_kv(My_kv* my_kv,const char* servername)
+int init_network_context(NetworkContext* networkContext, const char* servername)
 {
-    //todo remove gidx
-//    int gidx = -1;
-
-    my_kv->if_server = servername? 0 : 1 ;
+    networkContext->if_server = servername ? 0 : 1 ;
     char gid[33];
-    my_kv->size = MAX_BUF_SIZE * sizeof(char);
-    my_kv->gidx = -1;
+    networkContext->size = MAX_BUF_SIZE * sizeof(char);
+    networkContext->gidx = -1;
 
-    if(init_dev_list(my_kv)){return 1;}
-    if(init_context(my_kv)){return 1;}
+    if(init_dev_list(networkContext)){return 1;}
+    if(init_context(networkContext)){return 1;}
 
-    struct ibv_cq* cq = init_cq(my_kv);
-    if (cq == NULL){return 1;}
+    struct ibv_cq* cq = init_cq(networkContext);
+    if (cq == NULL)
+    {
+        return 1;
+    }
 
-    my_kv->ctx = pp_init_ctx(my_kv, cq);
-    if (!my_kv->ctx) {return 1;}
+    networkContext->ctx = pp_init_ctx(networkContext, cq);
+    if (!networkContext->ctx) {return 1;}
 
-    if(get_port(my_kv)){return 1;}
-    if(get_local_lid(my_kv)){return 1;}
-    if(check_gidX(my_kv)){return 1;}
+    if(get_port_info(networkContext)){return 1;}
+    if(get_local_lid(networkContext)){return 1;}
+    if(check_gidX(networkContext)){return 1;}
 
-    my_kv->my_dest.qpn = my_kv->ctx->qp->qp_num;
-    my_kv->my_dest.psn = lrand48() & 0xffffff;
-    inet_ntop(AF_INET6, &my_kv->my_dest.gid, gid, sizeof gid);
+    networkContext->my_dest.qpn = networkContext->ctx->qp->qp_num;
+    networkContext->my_dest.psn = lrand48() & 0xffffff;
+    inet_ntop(AF_INET6, &networkContext->my_dest.gid, gid, sizeof gid);
     printf("  local address:  LID 0x%04x, QPN 0x%06x, PSN 0x%06x, GID %s\n",
-           my_kv->my_dest.lid, my_kv->my_dest.qpn, my_kv->my_dest.psn, gid);
+           networkContext->my_dest.lid, networkContext->my_dest.qpn, networkContext->my_dest.psn, gid);
 
     if(servername){
-        if(init_client_post_recv(my_kv)){
+        if(init_client_post_recv(networkContext)){
             return 1;
         }
     }
@@ -455,7 +447,7 @@ int add_work_recv(struct pingpong_context* ctx)
     return 0;
 }
 
-int pull_cq(My_kv * pHandler, struct ibv_wc *wc, int iters)
+int pull_cq(NetworkContext * pHandler, struct ibv_wc *wc, int iters)
 {
     for (int i = 0; i < iters; ++i)
     {
@@ -549,7 +541,7 @@ size_t create_header(void* buf, enum Protocol protocol, enum Operation_t operati
     return sizeof(uint8_t) + sizeof(uint8_t) + sizeof(uint32_t) + sizeof(uint32_t);
 }
 
-int pp_post_send_and_wait(My_kv *pHandler, struct pingpong_context* ctx, struct ibv_wc* wc, int iters, bool is_server)
+int pp_post_send_and_wait(NetworkContext *pHandler, struct pingpong_context* ctx, struct ibv_wc* wc, int iters, bool is_server)
 {
     struct ibv_wc tmp;
     struct ibv_wc* completion_work = wc == NULL ? &tmp : wc;
@@ -630,7 +622,7 @@ int pp_post_recv_server(struct pingpong_context *ctx, int rx)
 
 
 
-int get_client_identifier(My_kv * pHandler, uint32_t src_qp)
+int get_client_identifier(NetworkContext * pHandler, uint32_t src_qp)
 {
 //    todo
     for (int i = 0; i < NUM_OF_CLIENTS; ++i) {

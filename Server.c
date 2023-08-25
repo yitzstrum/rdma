@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include "bw_template.h"
 #include "Server.h"
-#include "DB.h"
+#include "db.h"
 
 int init_clients_ctx(My_kv* my_kv,int i){
     my_kv->clients_ctx[i] = pp_init_ctx(my_kv, my_kv->ctx->cq);

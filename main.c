@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <string.h>
+#include <time.h>
 #include "Client.h"
 #include "Server.h"
 #include "bw_template.h"
@@ -23,7 +25,7 @@ char* generate_random_string() {
     return random_string;
 }
 
-int warmup(My_kv* pHandler)
+int warmup(NetworkContext* pHandler)
 {
     char* key = generate_random_string();
     printf("key %s\n", key);
@@ -47,7 +49,7 @@ int warmup(My_kv* pHandler)
     return 0;
 }
 
-void measure_eager_throughput(My_kv * pHandler)
+void measure_eager_throughput(NetworkContext * pHandler)
 {
     const int total_requests = 100;
     int value_sizes[] = {1022, 2046, 4095};
@@ -92,13 +94,13 @@ int main(int argc, char *argv[])
             return 1;
         }
 
-        My_kv handler;
-        memset(&handler, 0, sizeof(My_kv));
+        NetworkContext handler;
+        memset(&handler, 0, sizeof(NetworkContext));
 //        handler.size = MAX_BUF_SIZE * sizeof(char);
 //        handler.gidx = -1;
-        My_kv* my_kv = &handler;
+        NetworkContext* my_kv = &handler;
 
-        if (init_my_kv(my_kv,servername) != 0)
+        if (init_network_context(my_kv, servername) != 0)
         {
             fprintf(stderr, "Couldn't init Kv_handle");
             return 1;
@@ -106,12 +108,6 @@ int main(int argc, char *argv[])
 
         if (servername)
         {
-//            my_kv->ctx->routs = pp_post_recv_client(my_kv->ctx, my_kv->ctx->rx_depth);
-//            if (my_kv->ctx->routs < my_kv->ctx->rx_depth) {
-//                fprintf(stderr, "Couldn't post receive (%d)\n", my_kv->ctx->routs);
-//                return 1;
-//            }
-
             if (kv_open(servername, (void **) &my_kv) != 0)
             {
                 fprintf(stderr, "Client couldn't connect\n");
