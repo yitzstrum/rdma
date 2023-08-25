@@ -5,26 +5,33 @@
 
 #define IB_PORT (1)
 #define PORT (12345)
-#define MAX_EAGER_MSG_SIZE (4096)
+#define MAX_EAGER_SIZE (4096)
 #define MAX_BUF_SIZE (5120)
 #define NUM_OF_CLIENTS (1)
 #define MAX_RESOURCES (100)
+#define SL (0
+#define RX_DEPTH (100)
+#define TX_DEPTH (100)
 
-extern const int RX_DEPTH;
-extern const int TX_DEPTH;
-extern const int SL;
 extern const enum ibv_mtu MTU;
-
 
 enum Protocol {
     EAGER,
     RANDEVOUS
 };
 
-enum Operation_t {
+enum OperationType {
     GET,
     SET
 };
+
+typedef struct MessageData
+{
+    enum Protocol Protocol;
+    enum OperationType operationType;
+    size_t keySize;
+    size_t valueSize;
+} MessageData;
 
 typedef struct Resource
 {
@@ -58,7 +65,7 @@ struct pingpong_dest {
 };
 
 
-typedef struct NetworkContext {
+typedef struct KvHandle {
     int if_server;
     struct pingpong_context* ctx;
     struct pingpong_context* clients_ctx[NUM_OF_CLIENTS]; //if server
@@ -69,25 +76,25 @@ typedef struct NetworkContext {
     struct pingpong_dest* rem_dest;
     struct pingpong_dest my_dest;
     struct ibv_context *context;
-} NetworkContext;
+} KvHandle;
 
 //init
-int init_dev_list(NetworkContext* my_kv);
-int init_context(NetworkContext* my_kv);
-struct ibv_cq* init_cq(NetworkContext *networkContext);
+int init_dev_list(KvHandle* my_kv);
+int init_context(KvHandle* my_kv);
+struct ibv_cq* init_cq(KvHandle *networkContext);
 void init_resource2(struct pingpong_context *ctx);
-int init_pd(struct pingpong_context *ctx, NetworkContext* networkContext);
-int init_buf(struct pingpong_context *ctx, NetworkContext* pHandler, int page_size);
+int init_pd(struct pingpong_context *ctx, KvHandle* networkContext);
+int init_buf(struct pingpong_context *ctx, KvHandle* pHandler, int page_size);
 //int init_mr(struct pingpong_context *ctx, size_t size, enum ibv_access_flags access);
 struct ibv_mr* init_mr(struct ibv_pd* pd, void* buf, size_t size, enum ibv_access_flags access);
 struct ibv_qp* init_qp(struct pingpong_context* ctx);
-struct pingpong_context *pp_init_ctx(NetworkContext* networkContext, struct ibv_cq* cq);
-int get_port_info(NetworkContext* networkContext);
-int get_local_lid(NetworkContext* networkContext);
-int check_gidX(NetworkContext* networkContext);
+struct pingpong_context *pp_init_ctx(KvHandle* kv_handle, struct ibv_cq* cq);
+int get_port_info(KvHandle* networkContext);
+int get_local_lid(KvHandle* networkContext);
+int check_gidX(KvHandle* networkContext);
 int pp_post_recv_client(struct pingpong_context *ctx, int n);
-int init_client_post_recv(NetworkContext* my_kv);
-int init_network_context(NetworkContext* networkContext, const char* servername);
+int init_client_post_recv(KvHandle* networkContext);
+int init_network_context(KvHandle* networkContext, const char* servername);
 
 
 //connect
@@ -99,14 +106,14 @@ void gid_to_wire_gid(const union ibv_gid *gid, char wgid[]);
 
 //set and get - helper function
 int add_work_recv(struct pingpong_context* ctx);
-int pull_cq(NetworkContext * pHandler, struct ibv_wc *wc, int iters);
+int pull_cq(KvHandle * pHandler, struct ibv_wc *wc, int iters);
 int pp_post_send(struct pingpong_context *ctx, bool is_server);
-size_t parse_header(const void* buf, enum Protocol* protocol, enum Operation_t* operation, size_t* key_size, size_t* val_size);
+size_t parse_header(const void* buf, enum Protocol* protocol, enum OperationType* operation, size_t* key_size, size_t* val_size);
 
 
 //set and get
-size_t create_header(void* buf, enum Protocol protocol, enum Operation_t operation, size_t key_size, size_t val_size);
-int pp_post_send_and_wait(NetworkContext *pHandler, struct pingpong_context* ctx, struct ibv_wc* wc, int iters, bool is_server);
+size_t create_header(void* buf, enum Protocol protocol, enum OperationType operation, size_t key_size, size_t val_size);
+int pp_post_send_and_wait(KvHandle *kv_handle, struct pingpong_context* ctx, struct ibv_wc* wc, int iters);
 
 //server function
 
@@ -114,7 +121,7 @@ int pp_post_recv_server(struct pingpong_context *ctx, int n);
 
 struct pingpong_dest *pp_server_exch_dest(struct ibv_qp* qp, const struct pingpong_dest *my_dest, int sgid_idx);
 
-int get_client_identifier(NetworkContext * pHandler, uint32_t src_qp);
+int get_client_identifier(KvHandle * pHandler, uint32_t src_qp);
 
 //int pp_post_recv(struct pingpong_context *ctx, int resource_idx);
 
