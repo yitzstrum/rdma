@@ -116,9 +116,9 @@ int eager_get_server(KvHandle *kv_handle, MessageDataGetServer* messageDataGetSe
     char* value = NULL;
     hashTable_get(key, &value,kv_handle->hashTable);
     char* bufferPointer = kv_handle->clients_ctx[messageDataGetServer->client_id]->resources[messageDataGetServer->wr_id].buf;
-    printf("The size of the value is: %lu\n", sizeof(value));
+    printf("The size of the value is: %lu\n", strlen(value));
     printf("The value is: %s\n", value);
-    bufferPointer = add_message_data_to_buf(bufferPointer, 0, sizeof(value), GET);
+    bufferPointer = add_message_data_to_buf(bufferPointer, 0, strlen(value) + 1, GET);
     strcpy(bufferPointer, value);
     if (pp_post_send_and_wait(kv_handle, kv_handle->clients_ctx[messageDataGetServer->client_id], NULL, 1))
     {
