@@ -116,7 +116,7 @@ int eager_get_server(KvHandle *kv_handle, MessageDataGetServer* messageDataGetSe
     printf("The key is: %s\n", key);
     char* value = NULL;
     hashTable_get(key, &value,kv_handle->hashTable);
-    char* bufferPointer = kv_handle->clients_ctx[messageDataGetServer->client_id]->resources[messageDataGetServer->wr_id].buf;
+    char* bufferPointer = kv_handle->clients_ctx[messageDataGetServer->client_id]->buf;
     printf("The size of the value is: %lu\n", strlen(value));
     printf("The value is: %s\n", value);
     bufferPointer = add_message_data_to_buf(bufferPointer, 0, strlen(value) + 1, GET);
