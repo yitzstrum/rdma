@@ -83,6 +83,7 @@ void get_wr_id(MessageDataGetServer* messageDataGetServer,struct ibv_wc* wc){
 }
 
 char* get_job(KvHandle *kv_handle, MessageDataGetServer* messageDataGetServer, struct ibv_wc* wc){
+    printf("-------------get_job_func-------------\n");
     get_id_client(kv_handle,messageDataGetServer, wc);
     get_wr_id(messageDataGetServer, wc);
     return get_wr_details_server(
@@ -109,7 +110,7 @@ int eager_set_server(KvHandle *kv_handle, MessageDataGetServer* messageDataGetSe
 }
 
 int eager_get_server(KvHandle *kv_handle, MessageDataGetServer* messageDataGetServer, char* key){
-    printf("-------------eager_get_server-------------");
+    printf("-------------eager_get_server-------------\n");
     char** value;
     hashTable_get(key, value,kv_handle->hashTable);
     char* bufferPointer = kv_handle->clients_ctx[messageDataGetServer->client_id]->resources[messageDataGetServer->wr_id].buf;
@@ -148,6 +149,7 @@ int kv_set_server(KvHandle *kv_handle,MessageDataGetServer* messageDataGetServer
 
 
 int kv_get_server(KvHandle *kv_handle, MessageDataGetServer* messageDataGetServer, char* data){
+    printf("-------------kv_get_server-------------start-------------\n");
     switch (messageDataGetServer->Protocol) {
         case EAGER:
             return eager_get_server(kv_handle, messageDataGetServer, data);
@@ -156,7 +158,9 @@ int kv_get_server(KvHandle *kv_handle, MessageDataGetServer* messageDataGetServe
     }
     return 1;
 }
+
 int process(KvHandle *kv_handle){
+    printf("-------------Starting Server process-------------");
     struct ibv_wc wc;
     if(pull_cq(kv_handle,&wc,1)){
         perror("Server failed pull cq:");

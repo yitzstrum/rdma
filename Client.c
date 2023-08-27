@@ -98,6 +98,7 @@ int kv_get(void *obj, const char *key, char **value)
 //    char* buf_pointer = kv_handle->ctx->buf;
     MessageData messageData;
     char* data = get_wr_details_client(kv_handle, &messageData);
+    printf("Message Protocol -> %u\n", messageData.Protocol);
     printf("The client received the following value: %s\n", data);
 
 
