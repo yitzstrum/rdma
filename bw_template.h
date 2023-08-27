@@ -30,7 +30,7 @@ enum OperationType {
 };
 
 enum Wr_Id {
-    I_SEND=NUM_OF_CLIENTS*MAX_RESOURCES,
+    I_SEND = MAX_RESOURCES,
     CLIENT,
     RDMA
 };
@@ -134,7 +134,8 @@ size_t parse_header(const void* buf, enum Protocol* protocol, enum OperationType
 
 
 //set and get
-size_t create_header(void* buf, enum Protocol protocol, enum OperationType operation, size_t key_size, size_t val_size);
+char* get_wr_details_server(char* buffer, MessageDataGetServer* messageDataGetServer);
+char* get_wr_details_client(KvHandle *kv_handle, MessageData* messageData);
 int pp_post_send_and_wait(KvHandle *kv_handle, struct pingpong_context* ctx, struct ibv_wc* wc, int iters);
 
 //server function

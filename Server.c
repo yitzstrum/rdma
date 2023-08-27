@@ -71,7 +71,7 @@ int check_who_send(struct ibv_wc* wc){
 
 void get_id_client(KvHandle *kv_handle,MessageDataGetServer* messageDataGetServer,struct ibv_wc* wc){
     for(int client=0; client<NUM_OF_CLIENTS; client++){
-        if (wc->qp_num == kv_handle->clients_ctx[client]->qp->qp_num ){
+        if (wc->qp_num == kv_handle->clients_ctx[client]->qp->qp_num){
             messageDataGetServer->client_id = client;
             break;
         }
@@ -82,34 +82,23 @@ void get_wr_id(MessageDataGetServer* messageDataGetServer,struct ibv_wc* wc){
     messageDataGetServer->wr_id = wc->wr_id;
 }
 
-char* get_wr_details(KvHandle *kv_handle,MessageDataGetServer* messageDataGetServer){
-    char* buffer=kv_handle->clients_ctx[messageDataGetServer->client_id]->resources[messageDataGetServer->wr_id].buf;
-
-    memcpy(&messageDataGetServer->Protocol, buffer, sizeof(messageDataGetServer->Protocol));
-    buffer+=sizeof(messageDataGetServer->Protocol);
-
-    memcpy(&messageDataGetServer->operationType, buffer, sizeof(messageDataGetServer->operationType));
-    buffer+=sizeof(messageDataGetServer->operationType);
-
-    memcpy(&messageDataGetServer->keySize, buffer, sizeof(messageDataGetServer->keySize));
-    buffer+=sizeof(messageDataGetServer->keySize);
-
-    memcpy(&messageDataGetServer->valueSize, buffer, sizeof(messageDataGetServer->valueSize));
-    return buffer+=sizeof(messageDataGetServer->valueSize);
-
+char* get_job(KvHandle *kv_handle, MessageDataGetServer* messageDataGetServer, struct ibv_wc* wc){
+    get_id_client(kv_handle,messageDataGetServer, wc);
+    get_wr_id(messageDataGetServer, wc);
+    return get_wr_details_server(
+            kv_handle->clients_ctx[messageDataGetServer->client_id]->resources[messageDataGetServer->wr_id].buf,
+            messageDataGetServer);
 }
-char* get_job(KvHandle *kv_handle,MessageDataGetServer* messageDataGetServer,struct ibv_wc* wc){
-    get_id_client(kv_handle,messageDataGetServer,wc);
-    get_wr_id(messageDataGetServer,wc);
-    return get_wr_details(kv_handle,messageDataGetServer);
-}
-int eager_set_server(KvHandle *kv_handle,MessageDataGetServer* messageDataGetServer,char* data){
+
+int eager_set_server(KvHandle *kv_handle, MessageDataGetServer* messageDataGetServer, char* data){
     char* key = malloc(messageDataGetServer->keySize);
     char *value = malloc(messageDataGetServer->valueSize);
 
-    memcpy(key, data, messageDataGetServer->keySize);
-    memcpy(value, data + messageDataGetServer->keySize+1, messageDataGetServer->valueSize);
-//    todo
+    strcpy(key, data);
+    data += sizeof(key);
+    strcpy(value, data);
+
+    // TODO: Check that set works.
     printf("key: %s, value: %s\n",key,value);
     if (hashTable_set(key, value, kv_handle->hashTable))
     {
@@ -118,11 +107,13 @@ int eager_set_server(KvHandle *kv_handle,MessageDataGetServer* messageDataGetSer
     }
     return 0;
 }
+
 int eager_get_server(KvHandle *kv_handle,MessageDataGetServer* messageDataGetServer,char* data){
     char val;
     return 0;
 
 }
+
 //
 //int rendezvous_set(){
 //    return 0;
@@ -160,8 +151,9 @@ int process(KvHandle *kv_handle){
         return 0;}
 
     if(check_who_send(&wc)){return 0;}
+
     MessageDataGetServer messageDataGetServer;
-    char* data = get_job(kv_handle,&messageDataGetServer,&wc);
+    char* data = get_job(kv_handle, &messageDataGetServer, &wc);
 //    printf("protocol: %d \n",messageDataGetServer.Protocol);
 //    printf("op: %d \n",messageDataGetServer.operationType);
 //    printf("key_size: %zu \n",messageDataGetServer.keySize);
@@ -169,10 +161,10 @@ int process(KvHandle *kv_handle){
 //    printf("data: %s \n",data);
     switch (messageDataGetServer.operationType) {
         case SET:
-            kv_set_server(kv_handle,&messageDataGetServer,data);
+            kv_set_server(kv_handle, &messageDataGetServer, data);
             break;
         case GET:
-            kv_get_server(kv_handle,&messageDataGetServer,data);
+            kv_get_server(kv_handle, &messageDataGetServer, data);
             break;
         default:
             return 1;
@@ -183,7 +175,7 @@ int process(KvHandle *kv_handle){
 
 void start_server(void* kv){
     KvHandle *kv_handle = ((KvHandle *) kv);
-    kv_handle->hashTable=initializeHashTable();
+    kv_handle->hashTable = initializeHashTable();
     printf("connect to client\n");
     if (connect_to_clients(kv_handle)) {return;}
     while(process(kv_handle)==0){};
