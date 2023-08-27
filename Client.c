@@ -6,23 +6,9 @@
 #include <string.h>
 #include "bw_template.h"
 
-char* get_wr_details2(KvHandle *kv_handle,MessageData * messageData){
-    char* buffer=kv_handle->ctx->buf;
 
-    memcpy(&messageData->Protocol, buffer, sizeof(messageData->Protocol));
-    buffer+=sizeof(messageData->Protocol);
 
-    memcpy(&messageData->operationType, buffer, sizeof(messageData->operationType));
-    buffer+=sizeof(messageData->operationType);
-
-    memcpy(&messageData->keySize, buffer, sizeof(messageData->keySize));
-    buffer+=sizeof(messageData->keySize);
-
-    memcpy(&messageData->valueSize, buffer, sizeof(messageData->valueSize));
-    return buffer+=sizeof(messageData->valueSize);
-}
-
-char* add_message_data_to_buf(char* buf_pointer, size_t keySize, size_t valueSize,enum OperationType operation)
+char* add_message_data_to_buf(char* buf_pointer, size_t keySize, size_t valueSize, enum OperationType operation)
 {
     MessageData messageData;
     memset(&messageData, 0, sizeof(MessageData));
@@ -34,18 +20,18 @@ char* add_message_data_to_buf(char* buf_pointer, size_t keySize, size_t valueSiz
     return buf_pointer + sizeof(MessageData);
 }
 
-int eager_send(KvHandle* kv_handle, const char* key, const char* value, size_t keySize, size_t valueSize,enum OperationType operation,int iters)
+int eager_send(KvHandle* kv_handle, const char* key, const char* value, size_t keySize, size_t valueSize, enum OperationType operation, int iters)
 {
     char* buf_pointer = kv_handle->ctx->buf;
 
-    buf_pointer = add_message_data_to_buf(buf_pointer, keySize, valueSize,operation);
+    buf_pointer = add_message_data_to_buf(buf_pointer, keySize, valueSize, operation);
 
     strcpy(buf_pointer, key);
 //    printf("key: %s\n",buf_pointer);
     buf_pointer += sizeof(key);
 //    printf("val: %s\n",buf_pointer);
     strcpy(buf_pointer, value);
-    printf("22\n");
+//    printf("22\n");
     if (pp_post_send_and_wait(kv_handle, kv_handle->ctx, NULL, iters))
     {
         perror("Client failed to post send the request");
@@ -119,10 +105,10 @@ int kv_get(void *obj, const char *key, char **value)
 {
     size_t key_size = strlen(key) + 1;
     KvHandle* kv_handle = (KvHandle *) obj;
-    eager_send(kv_handle,key,"",key_size,0,GET,2);
+    eager_send(kv_handle, key, "", key_size, 0, GET, 2);
 //    char* buf_pointer = kv_handle->ctx->buf;
     MessageData messageData;
-    char* data = get_wr_details2(kv_handle,&messageData);
+    char* data = get_wr_details_client(kv_handle, &messageData);
 
 
     switch (messageData.Protocol) {

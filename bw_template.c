@@ -473,54 +473,34 @@ int pp_post_send(struct pingpong_context *ctx)
     return ibv_post_send(ctx->qp, &wr, &bad_wr);
 }
 
-size_t parse_header(const void* buf, enum Protocol* protocol, enum OperationType* operation, size_t* key_size, size_t* val_size) {
-    uint8_t protocol_val;
-    uint8_t operation_val;
-    uint32_t key_size_val;
-    uint32_t val_size_val;
-    const uint8_t* buffer = (const uint8_t*)buf;
+char* get_wr_details_server(char* buffer, MessageDataGetServer* messageDataGetServer){
+    memcpy(&messageDataGetServer->Protocol, buffer, sizeof(messageDataGetServer->Protocol));
+    buffer += sizeof(messageDataGetServer->Protocol);
 
-    memcpy(&protocol_val, buffer, sizeof(protocol_val));
-    buffer += sizeof(protocol_val);
+    memcpy(&messageDataGetServer->operationType, buffer, sizeof(messageDataGetServer->operationType));
+    buffer += sizeof(messageDataGetServer->operationType);
 
-    memcpy(&operation_val, buffer, sizeof(operation_val));
-    buffer += sizeof(operation_val);
+    memcpy(&messageDataGetServer->keySize, buffer, sizeof(messageDataGetServer->keySize));
+    buffer += sizeof(messageDataGetServer->keySize);
 
-    memcpy(&key_size_val, buffer, sizeof(key_size_val));
-    buffer += sizeof(key_size_val);
-
-    memcpy(&val_size_val, buffer, sizeof(val_size_val));
-
-    *protocol = (enum Protocol)protocol_val;
-    *operation = (enum OperationType)operation_val;
-    *key_size = (size_t)key_size_val;
-    *val_size = (size_t)val_size_val;
-    printf("arg: pr op key val %d %d %zu %zu\n",*protocol,*operation,*key_size,*val_size);
-
-    return sizeof(uint8_t) + sizeof(uint8_t) + sizeof(uint32_t) + sizeof(uint32_t);
+    memcpy(&messageDataGetServer->valueSize, buffer, sizeof(messageDataGetServer->valueSize));
+    return buffer + sizeof(messageDataGetServer->valueSize);
 }
 
-//set and get
-size_t create_header(void* buf, enum Protocol protocol, enum OperationType operation, size_t key_size, size_t val_size) {
-    uint8_t protocol_val = (uint8_t)protocol;
-    uint8_t operation_val = (uint8_t)operation;
-    uint32_t key_size_val = (uint32_t)key_size;
-    uint32_t val_size_val = (uint32_t)val_size;
-    uint8_t* buffer = (uint8_t*)buf;
+char* get_wr_details_client(KvHandle *kv_handle, MessageData* messageData){
+    char* buffer=kv_handle->ctx->buf;
 
-    memcpy(buffer, &protocol_val, sizeof(uint8_t));
-    buffer += sizeof(protocol_val);
+    memcpy(&messageData->Protocol, buffer, sizeof(messageData->Protocol));
+    buffer += sizeof(messageData->Protocol);
 
+    memcpy(&messageData->operationType, buffer, sizeof(messageData->operationType));
+    buffer += sizeof(messageData->operationType);
 
-    memcpy(buffer, &operation_val, sizeof(uint8_t));
-    buffer += sizeof(operation_val);
+    memcpy(&messageData->keySize, buffer, sizeof(messageData->keySize));
+    buffer += sizeof(messageData->keySize);
 
-    memcpy(buffer, &key_size_val, sizeof(uint32_t));
-    buffer += sizeof(key_size_val);
-
-    memcpy(buffer, &val_size_val, sizeof(uint32_t));
-
-    return sizeof(uint8_t) + sizeof(uint8_t) + sizeof(uint32_t) + sizeof(uint32_t);
+    memcpy(&messageData->valueSize, buffer, sizeof(messageData->valueSize));
+    return buffer + sizeof(messageData->valueSize);
 }
 
 int pp_post_send_and_wait(KvHandle *kv_handle, struct pingpong_context* ctx, struct ibv_wc* wc, int iters)
