@@ -489,14 +489,18 @@ char* get_wr_details_server(char* buffer, MessageDataGetServer* messageDataGetSe
     printf("-------------get_wr_details_server-------------start-------------\n");
     memcpy(&messageDataGetServer->Protocol, buffer, sizeof(messageDataGetServer->Protocol));
     buffer += sizeof(messageDataGetServer->Protocol);
+    printf("Protocol: %u\n", messageDataGetServer->Protocol);
 
     memcpy(&messageDataGetServer->operationType, buffer, sizeof(messageDataGetServer->operationType));
     buffer += sizeof(messageDataGetServer->operationType);
+    printf("operationType: %u\n", messageDataGetServer->operationType);
 
     memcpy(&messageDataGetServer->keySize, buffer, sizeof(messageDataGetServer->keySize));
     buffer += sizeof(messageDataGetServer->keySize);
+    printf("keySize: %zu\n", messageDataGetServer->keySize);
 
     memcpy(&messageDataGetServer->valueSize, buffer, sizeof(messageDataGetServer->valueSize));
+    printf("valueSize: %zu\n", messageDataGetServer->valueSize);
     printf("-------------get_wr_details_server-------------end-------------\n");
     return buffer + sizeof(messageDataGetServer->valueSize);
 }
