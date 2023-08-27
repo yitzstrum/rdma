@@ -6,20 +6,6 @@
 #include <string.h>
 #include "bw_template.h"
 
-
-
-char* add_message_data_to_buf(char* buf_pointer, size_t keySize, size_t valueSize, enum OperationType operation)
-{
-    MessageData messageData;
-    memset(&messageData, 0, sizeof(MessageData));
-    messageData.operationType = operation;
-    messageData.Protocol = EAGER;
-    messageData.keySize = keySize;
-    messageData.valueSize = valueSize;
-    memcpy(buf_pointer, &messageData, sizeof(MessageData));
-    return buf_pointer + sizeof(MessageData);
-}
-
 int eager_send(KvHandle* kv_handle, const char* key, const char* value, size_t keySize, size_t valueSize, enum OperationType operation, int iters)
 {
     char* buf_pointer = kv_handle->ctx->buf;
@@ -30,7 +16,11 @@ int eager_send(KvHandle* kv_handle, const char* key, const char* value, size_t k
 //    printf("key: %s\n",buf_pointer);
     buf_pointer += sizeof(key);
 //    printf("val: %s\n",buf_pointer);
-    strcpy(buf_pointer, value);
+    if (operation == SET)
+    {
+        strcpy(buf_pointer, value);
+    }
+
 //    printf("22\n");
     if (pp_post_send_and_wait(kv_handle, kv_handle->ctx, NULL, iters))
     {
@@ -40,14 +30,13 @@ int eager_send(KvHandle* kv_handle, const char* key, const char* value, size_t k
     return 0;
 }
 
-int eager_get(MessageData* MD,char* data,char** value)
+int eager_get(MessageData* messageData, char* data, char** value)
 {
-    *value = malloc(MD->valueSize);
-    if (!*value)
-    {return 1;}
+    *value = malloc(messageData->valueSize);
+    if (!*value) {return 1;}
 
 //    char* data = (char *)((uint8_t*)response + header_size);
-    memcpy(*value , data, MD->valueSize);
+    memcpy(*value , data, messageData->valueSize);
     return 0;
 }
 
@@ -109,6 +98,7 @@ int kv_get(void *obj, const char *key, char **value)
 //    char* buf_pointer = kv_handle->ctx->buf;
     MessageData messageData;
     char* data = get_wr_details_client(kv_handle, &messageData);
+    printf("The client received the following value: %s\n", data);
 
 
     switch (messageData.Protocol) {

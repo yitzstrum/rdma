@@ -473,6 +473,18 @@ int pp_post_send(struct pingpong_context *ctx)
     return ibv_post_send(ctx->qp, &wr, &bad_wr);
 }
 
+char* add_message_data_to_buf(char* buf_pointer, size_t keySize, size_t valueSize, enum OperationType operation)
+{
+    MessageData messageData;
+    memset(&messageData, 0, sizeof(MessageData));
+    messageData.operationType = operation;
+    messageData.Protocol = EAGER;
+    messageData.keySize = keySize;
+    messageData.valueSize = valueSize;
+    memcpy(buf_pointer, &messageData, sizeof(MessageData));
+    return buf_pointer + sizeof(MessageData);
+}
+
 char* get_wr_details_server(char* buffer, MessageDataGetServer* messageDataGetServer){
     memcpy(&messageDataGetServer->Protocol, buffer, sizeof(messageDataGetServer->Protocol));
     buffer += sizeof(messageDataGetServer->Protocol);

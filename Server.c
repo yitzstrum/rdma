@@ -99,7 +99,7 @@ int eager_set_server(KvHandle *kv_handle, MessageDataGetServer* messageDataGetSe
     strcpy(value, data);
 
     // TODO: Check that set works.
-    printf("key: %s, value: %s\n",key,value);
+    printf("key: %s, value: %s\n", key, value);
     if (hashTable_set(key, value, kv_handle->hashTable))
     {
         fprintf(stderr, "hashtable set failed\n");
@@ -108,11 +108,23 @@ int eager_set_server(KvHandle *kv_handle, MessageDataGetServer* messageDataGetSe
     return 0;
 }
 
-int eager_get_server(KvHandle *kv_handle,MessageDataGetServer* messageDataGetServer,char* data){
-    char val;
+int eager_get_server(KvHandle *kv_handle, MessageDataGetServer* messageDataGetServer, char* key){
+    printf("-------------eager_get_server-------------");
+    char** value;
+    hashTable_get(key, value,kv_handle->hashTable);
+    char* bufferPointer = kv_handle->clients_ctx[messageDataGetServer->client_id]->resources[messageDataGetServer->wr_id].buf;
+    printf("The size of the value is: %lu\n", sizeof(*value));
+    printf("The value is: %s\n", *value);
+    bufferPointer = add_message_data_to_buf(bufferPointer, 0, sizeof(*value), GET);
+    strcpy(bufferPointer, *value);
+    if (pp_post_send_and_wait(kv_handle, kv_handle->clients_ctx[messageDataGetServer->client_id], NULL, 1))
+    {
+        perror("Server failed to send the value");
+        return 1;
+    }
     return 0;
-
 }
+
 
 //
 //int rendezvous_set(){
@@ -135,12 +147,12 @@ int kv_set_server(KvHandle *kv_handle,MessageDataGetServer* messageDataGetServer
 }
 
 
-int kv_get_server(KvHandle *kv_handle,MessageDataGetServer* messageDataGetServer,char* data){
+int kv_get_server(KvHandle *kv_handle, MessageDataGetServer* messageDataGetServer, char* data){
     switch (messageDataGetServer->Protocol) {
         case EAGER:
-            return eager_get_server(kv_handle,messageDataGetServer,data);
-//        case RENDEZVOUS:
-//            return rendezvous_set();
+            return eager_get_server(kv_handle, messageDataGetServer, data);
+        case RENDEZVOUS:
+            break;
     }
     return 1;
 }
