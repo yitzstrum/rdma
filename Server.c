@@ -109,15 +109,17 @@ int eager_set_server(KvHandle *kv_handle, MessageDataGetServer* messageDataGetSe
     return 0;
 }
 
-int eager_get_server(KvHandle *kv_handle, MessageDataGetServer* messageDataGetServer, char* key){
+int eager_get_server(KvHandle *kv_handle, MessageDataGetServer* messageDataGetServer, char* data){
     printf("-------------eager_get_server-------------\n");
-    char** value;
-    hashTable_get(key, value,kv_handle->hashTable);
+    char* key = malloc(messageDataGetServer->keySize);
+    memcpy(key, data, messageDataGetServer->keySize);
+    char* value = NULL;
+    hashTable_get(key, &value,kv_handle->hashTable);
     char* bufferPointer = kv_handle->clients_ctx[messageDataGetServer->client_id]->resources[messageDataGetServer->wr_id].buf;
     printf("The size of the value is: %lu\n", sizeof(*value));
-    printf("The value is: %s\n", *value);
+    printf("The value is: %s\n", value);
     bufferPointer = add_message_data_to_buf(bufferPointer, 0, sizeof(*value), GET);
-    strcpy(bufferPointer, *value);
+    strcpy(bufferPointer, value);
     if (pp_post_send_and_wait(kv_handle, kv_handle->clients_ctx[messageDataGetServer->client_id], NULL, 1))
     {
         perror("Server failed to send the value");
@@ -160,7 +162,7 @@ int kv_get_server(KvHandle *kv_handle, MessageDataGetServer* messageDataGetServe
 }
 
 int process(KvHandle *kv_handle){
-    printf("-------------Starting Server process-------------");
+    printf("-------------Starting Server process-------------\n");
     struct ibv_wc wc;
     if(pull_cq(kv_handle,&wc,1)){
         perror("Server failed pull cq:");
