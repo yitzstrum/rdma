@@ -32,11 +32,13 @@ int eager_send(KvHandle* kv_handle, const char* key, const char* value, size_t k
 
 int eager_get(MessageData* messageData, char* data, char** value)
 {
+    printf("-------------eager_get-------------start-------------\n");
     *value = malloc(messageData->valueSize);
     if (!*value) {return 1;}
 
 //    char* data = (char *)((uint8_t*)response + header_size);
     memcpy(*value , data, messageData->valueSize);
+    printf("Value: %s\n", *value);
     return 0;
 }
 
@@ -98,6 +100,7 @@ int kv_get(void *obj, const char *key, char **value)
 //    char* buf_pointer = kv_handle->ctx->buf;
     MessageData messageData;
     char* data = get_wr_details_client(kv_handle, &messageData);
+
     printf("Message Protocol -> %u\n", messageData.Protocol);
     printf("The client received the following value: %s\n", data);
 

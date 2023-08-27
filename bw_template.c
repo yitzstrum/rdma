@@ -502,18 +502,24 @@ char* get_wr_details_server(char* buffer, MessageDataGetServer* messageDataGetSe
 }
 
 char* get_wr_details_client(KvHandle *kv_handle, MessageData* messageData){
+    printf("-------------get_wr_details_client-------------start-------------\n");
     char* buffer=kv_handle->ctx->buf;
 
     memcpy(&messageData->Protocol, buffer, sizeof(messageData->Protocol));
     buffer += sizeof(messageData->Protocol);
+    printf("Protocol: %u\n", messageData->Protocol);
 
     memcpy(&messageData->operationType, buffer, sizeof(messageData->operationType));
     buffer += sizeof(messageData->operationType);
+    printf("operationType: %u\n", messageData->operationType);
 
     memcpy(&messageData->keySize, buffer, sizeof(messageData->keySize));
     buffer += sizeof(messageData->keySize);
+    printf("keySize: %zu\n", messageData->keySize);
+
 
     memcpy(&messageData->valueSize, buffer, sizeof(messageData->valueSize));
+    printf("valueSize: %zu\n", messageData->valueSize);
     return buffer + sizeof(messageData->valueSize);
 }
 
