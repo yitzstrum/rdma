@@ -2,6 +2,7 @@
 #define BW_TEMPLATE_H
 
 #include <stdbool.h>
+#include "db.h"
 
 #define IB_PORT (1)
 #define PORT (12345)
@@ -9,20 +10,29 @@
 #define MAX_BUF_SIZE (5120)
 #define NUM_OF_CLIENTS (1)
 #define MAX_RESOURCES (100)
-#define SL (0
-#define RX_DEPTH (100)
-#define TX_DEPTH (100)
+//#define SL (0)
+//#define RX_DEPTH (100)
+//#define TX_DEPTH (100)
 
+extern const int RX_DEPTH;
+extern const int TX_DEPTH;
+extern const int SL;
+extern const enum ibv_mtu MTU;
 extern const enum ibv_mtu MTU;
 
 enum Protocol {
     EAGER,
-    RANDEVOUS
+    RENDEZVOUS
 };
-
 enum OperationType {
     GET,
     SET
+};
+
+enum Wr_Id {
+    I_SEND=NUM_OF_CLIENTS*MAX_RESOURCES,
+    CLIENT,
+    RDMA
 };
 
 typedef struct MessageData
@@ -31,7 +41,18 @@ typedef struct MessageData
     enum OperationType operationType;
     size_t keySize;
     size_t valueSize;
+
 } MessageData;
+
+typedef struct MessageDataGetServer
+{
+    enum Protocol Protocol;
+    enum OperationType operationType;
+    size_t keySize;
+    size_t valueSize;
+    int client_id;
+    int wr_id;
+} MessageDataGetServer;
 
 typedef struct Resource
 {
@@ -76,6 +97,7 @@ typedef struct KvHandle {
     struct pingpong_dest* rem_dest;
     struct pingpong_dest my_dest;
     struct ibv_context *context;
+    HashTable* hashTable;
 } KvHandle;
 
 //init
@@ -107,7 +129,7 @@ void gid_to_wire_gid(const union ibv_gid *gid, char wgid[]);
 //set and get - helper function
 int add_work_recv(struct pingpong_context* ctx);
 int pull_cq(KvHandle * pHandler, struct ibv_wc *wc, int iters);
-int pp_post_send(struct pingpong_context *ctx, bool is_server);
+int pp_post_send(struct pingpong_context *ctx);
 size_t parse_header(const void* buf, enum Protocol* protocol, enum OperationType* operation, size_t* key_size, size_t* val_size);
 
 

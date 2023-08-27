@@ -6,11 +6,27 @@
 #include <string.h>
 #include "bw_template.h"
 
-char* add_message_data_to_buf(char* buf_pointer, size_t keySize, size_t valueSize)
+char* get_wr_details2(KvHandle *kv_handle,MessageData * messageData){
+    char* buffer=kv_handle->ctx->buf;
+
+    memcpy(&messageData->Protocol, buffer, sizeof(messageData->Protocol));
+    buffer+=sizeof(messageData->Protocol);
+
+    memcpy(&messageData->operationType, buffer, sizeof(messageData->operationType));
+    buffer+=sizeof(messageData->operationType);
+
+    memcpy(&messageData->keySize, buffer, sizeof(messageData->keySize));
+    buffer+=sizeof(messageData->keySize);
+
+    memcpy(&messageData->valueSize, buffer, sizeof(messageData->valueSize));
+    return buffer+=sizeof(messageData->valueSize);
+}
+
+char* add_message_data_to_buf(char* buf_pointer, size_t keySize, size_t valueSize,enum OperationType operation)
 {
     MessageData messageData;
     memset(&messageData, 0, sizeof(MessageData));
-    messageData.operationType = SET;
+    messageData.operationType = operation;
     messageData.Protocol = EAGER;
     messageData.keySize = keySize;
     messageData.valueSize = valueSize;
@@ -18,38 +34,48 @@ char* add_message_data_to_buf(char* buf_pointer, size_t keySize, size_t valueSiz
     return buf_pointer + sizeof(MessageData);
 }
 
-int eager_set(KvHandle* kv_handle, const char* key, const char* value, size_t keySize, size_t valueSize)
+int eager_send(KvHandle* kv_handle, const char* key, const char* value, size_t keySize, size_t valueSize,enum OperationType operation,int iters)
 {
     char* buf_pointer = kv_handle->ctx->buf;
 
-    buf_pointer = add_message_data_to_buf(buf_pointer, keySize, valueSize);
+    buf_pointer = add_message_data_to_buf(buf_pointer, keySize, valueSize,operation);
 
     strcpy(buf_pointer, key);
+//    printf("key: %s\n",buf_pointer);
     buf_pointer += sizeof(key);
+//    printf("val: %s\n",buf_pointer);
     strcpy(buf_pointer, value);
-
-    if (pp_post_send_and_wait(kv_handle, kv_handle->ctx, NULL, 1) == 1)
+    printf("22\n");
+    if (pp_post_send_and_wait(kv_handle, kv_handle->ctx, NULL, iters))
     {
         perror("Client failed to post send the request");
         return 1;
     }
+    return 0;
+}
 
+int eager_get(MessageData* MD,char* data,char** value)
+{
+    *value = malloc(MD->valueSize);
+    if (!*value)
+    {return 1;}
+
+//    char* data = (char *)((uint8_t*)response + header_size);
+    memcpy(*value , data, MD->valueSize);
     return 0;
 }
 
 int rendezvous_set(KvHandle* kv_handle, const char* key, char* value, size_t key_len, size_t val_len)
 {
-
+    return 0;
 }
 
 int rendezvous_get(KvHandle* kv_handle, size_t val_size, char** valuePtr)
 {
+    return 0;
 }
 
-int eager_get(KvHandle* kv_handle, size_t header_size, size_t val_size, char** value)
-{
 
-}
 
 int kv_open(char *servername, void** obj)
 {
@@ -81,17 +107,33 @@ int kv_set(void* obj, const char *key, const char *value)
 
     if (key_size + value_size < MAX_EAGER_SIZE)
     {
-        return eager_set(kv_handle, key, value, key_size, value_size);
+        return eager_send(kv_handle, key, value, key_size, value_size,SET,1);
     }
-
-    return eager_set(kv_handle, key, value, key_size, value_size);
+    printf("11\n");
+    return eager_send(kv_handle, key, value, key_size, value_size,SET,1);
 //    return rendezvous_set();
 
 }
 
 int kv_get(void *obj, const char *key, char **value)
 {
+    size_t key_size = strlen(key) + 1;
+    KvHandle* kv_handle = (KvHandle *) obj;
+    eager_send(kv_handle,key,"",key_size,0,GET,2);
+//    char* buf_pointer = kv_handle->ctx->buf;
+    MessageData messageData;
+    char* data = get_wr_details2(kv_handle,&messageData);
 
+
+    switch (messageData.Protocol) {
+        case EAGER:
+            return eager_get(&messageData,data,value);
+//        case RENDEZVOUS:
+//            return rendezvous_get();
+        default:
+            return 1;
+    }
+    return 0;
 }
 
 void kv_release(char* value)
@@ -99,6 +141,6 @@ void kv_release(char* value)
     free(value);
 }
 
-int kv_close(void *My_kv){
+int kv_close(void *KvHandle){
     return 1;
 }

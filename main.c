@@ -116,7 +116,7 @@ int main(int argc, char *argv[])
                 return 1;
             }
 
-            measure_eager_throughput(networkContext);
+//            measure_eager_throughput(networkContext);
             const char *key = "yossef";
             const char *value = "Chaim";
 
@@ -133,7 +133,7 @@ int main(int argc, char *argv[])
             }
 
             printf("Client got val: %s\n", received_value);
-            kv_release(received_value);
+//            kv_release(received_value);
         }
 
         else
