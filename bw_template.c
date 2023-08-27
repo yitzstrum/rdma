@@ -15,8 +15,10 @@
 #include "bw_template.h"
 #include "db.h"
 
+const int RX_DEPTH = 100;
+const int TX_DEPTH = 100;
+const int SL = 0;
 const enum ibv_mtu MTU = IBV_MTU_2048;
-
 
 //init
 int init_dev_list(KvHandle* my_kv){
@@ -370,7 +372,6 @@ int pp_connect_ctx(struct ibv_qp* qp, int my_psn,
                     .is_global	= 0,
                     .dlid		= dest->lid,
                     .sl		= SL,
-                    .src_path_bits	= 0,
                     .port_num	= IB_PORT
             }
     };
@@ -451,16 +452,17 @@ int pull_cq(KvHandle * pHandler, struct ibv_wc *wc, int iters)
     return 0;
 }
 
-int pp_post_send(struct pingpong_context *ctx, bool is_server)
+int pp_post_send(struct pingpong_context *ctx)
 {
     struct ibv_sge list = {
             .addr	= (uintptr_t)ctx->buf,
             .length = ctx->size,
             .lkey	= ctx->mr->lkey
     };
-    ((bool *)ctx->buf)[MAX_BUF_SIZE - 1] = is_server;
+
     struct ibv_send_wr *bad_wr, wr = {
-            .wr_id	    = 202,
+//todo wr_id
+            .wr_id	    = I_SEND,
             .sg_list    = &list,
             .num_sge    = 1,
             .opcode     = IBV_WR_SEND,
@@ -526,12 +528,12 @@ int pp_post_send_and_wait(KvHandle *kv_handle, struct pingpong_context* ctx, str
     struct ibv_wc tmp;
     struct ibv_wc* completion_work = wc == NULL ? &tmp : wc;
 
-    if (pp_post_send(kv_handle->ctx, kv_handle->if_server) != 0 || pull_cq(kv_handle, completion_work, iters) != 0)
+    if (pp_post_send(ctx) != 0)
     {
         return 1;
     }
 
-    if (completion_work->opcode == IBV_WC_RECV && !is_server && add_work_recv(kv_handle->ctx) != 0)
+    if (pull_cq(kv_handle, completion_work, iters) != 0)
     {
         return 1;
     }
