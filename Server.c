@@ -129,12 +129,9 @@ int eager_get_server(KvHandle *kv_handle, MessageDataGetServer* messageDataGetSe
     return 0;
 }
 
-
-//
-//int rendezvous_set(){
-//    return 0;
-//
-//}
+int rendezvous_set_server(){
+    return 0;
+}
 //int rendezvous_get(){
 //    return 0;
 //}
@@ -143,8 +140,8 @@ int kv_set_server(KvHandle *kv_handle,MessageDataGetServer* messageDataGetServer
     switch (messageDataGetServer->Protocol) {
         case EAGER:
             return eager_set_server(kv_handle,messageDataGetServer,data);
-//        case RENDEZVOUS:
-//            return rendezvous_set();
+        case RENDEZVOUS:
+            return rendezvous_set_server();
     }
 
     return 1;

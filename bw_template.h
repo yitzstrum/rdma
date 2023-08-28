@@ -24,6 +24,7 @@ enum Protocol {
     EAGER,
     RENDEZVOUS
 };
+
 enum OperationType {
     GET,
     SET
@@ -31,6 +32,8 @@ enum OperationType {
 
 enum Wr_Id {
     I_SEND = MAX_RESOURCES,
+    I_SEND_SET ,
+    I_SEND_GET,
     CLIENT,
     RDMA
 };
@@ -61,6 +64,7 @@ typedef struct Resource
 } Resource;
 
 struct pingpong_context {
+    int count_send;
     struct ibv_comp_channel *channel;
     struct ibv_pd           *pd;
     struct ibv_mr           *mr;
@@ -134,7 +138,7 @@ size_t parse_header(const void* buf, enum Protocol* protocol, enum OperationType
 
 
 //set and get
-char* add_message_data_to_buf(char* buf_pointer, size_t keySize, size_t valueSize, enum OperationType operation);
+char* add_message_data_to_buf(char* buf_pointer, size_t keySize, size_t valueSize, enum OperationType operation,enum Protocol protocol);
 char* get_wr_details_server(char* buffer, MessageDataGetServer* messageDataGetServer);
 char* get_wr_details_client(KvHandle *kv_handle, MessageData* messageData);
 int pp_post_send_and_wait(KvHandle *kv_handle, struct pingpong_context* ctx, struct ibv_wc* wc, int iters);
@@ -147,12 +151,11 @@ struct pingpong_dest *pp_server_exch_dest(struct ibv_qp* qp, const struct pingpo
 
 int get_client_identifier(KvHandle * pHandler, uint32_t src_qp);
 
-//int pp_post_recv(struct pingpong_context *ctx, int resource_idx);
+int pp_post_recv(struct pingpong_context *ctx, int resource_idx);
+int pp_post_rdma(struct pingpong_context* ctx, uintptr_t remote_addr, uint32_t rkey, size_t length, enum ibv_wr_opcode opcode);
 
-//int pp_post_rdma(struct pingpong_context* ctx, uintptr_t remote_addr, uint32_t rkey, size_t length, enum ibv_wr_opcode opcode);
 
-
-//int init_resource(Resource* resource, struct ibv_pd* pd, size_t size);
+int init_resource(Resource* resource, struct ibv_pd* pd, size_t size,enum ibv_access_flags access);
 #endif /* BW_TEMPLATE_H */
 
 

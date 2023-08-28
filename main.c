@@ -109,6 +109,7 @@ int main(int argc, char *argv[])
             if(init_client_post_recv(networkContext)){
                 return 1;
             }
+            networkContext->ctx->count_send=0;
 
             if (kv_open(servername, (void **) &networkContext) != 0)
             {
