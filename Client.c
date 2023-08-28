@@ -15,11 +15,11 @@ int pp_post_send_client(struct pingpong_context *ctx)
     };
 
     struct ibv_send_wr *bad_wr, wr = {
-            .wr_id	    = I_SEND_SET,
+            .wr_id	    = ctx->count_send + MAX_RESOURCES,
             .sg_list    = &list,
             .num_sge    = 1,
             .opcode     = IBV_WR_SEND,
-            .send_flags = IBV_SEND_SIGNALED,
+//            .send_flags = IBV_SEND_SIGNALED,
             .next       = NULL
     };
 
@@ -30,7 +30,7 @@ int eager_set(KvHandle* kv_handle, const char* key, const char* value, size_t ke
 {
     init_resource(&kv_handle->ctx->resources[kv_handle->ctx->count_send],kv_handle->ctx->pd,MAX_BUF_SIZE);
     char* buf_pointer =kv_handle->ctx->resources[kv_handle->ctx->count_send].buf;
-    buf_pointer = add_message_data_to_buf(buf_pointer, keySize, valueSize, SET);
+    buf_pointer = add_message_data_to_buf(buf_pointer, keySize, valueSize, SET,EAGER);
 
     strcpy(buf_pointer, key);
     buf_pointer += sizeof(key);
@@ -68,8 +68,23 @@ int eager_get(MessageData* messageData, char* data, char** value)
     return 0;
 }
 
-int rendezvous_set(KvHandle* kv_handle, const char* key, char* value, size_t key_len, size_t val_len)
+int rendezvous_set(KvHandle* kv_handle, const char* key, const char* value, size_t keySize, size_t valueSize)
 {
+    init_resource(&kv_handle->ctx->resources[kv_handle->ctx->count_send],kv_handle->ctx->pd,MAX_BUF_SIZE,IBV_ACCESS_REMOTE_READ);
+    char* buf_pointer =kv_handle->ctx->resources[kv_handle->ctx->count_send].buf;
+    buf_pointer = add_message_data_to_buf(buf_pointer, keySize, valueSize, SET,RENDEZVOUS);
+    strcpy(buf_pointer, key);
+    buf_pointer += sizeof(key);
+
+    void* value_data = buf_pointer;
+    *(void **)value_data = value;
+    memcpy(value_data + sizeof(value), &kv_handle->ctx->resources[kv_handle->ctx->count_send].mr->rkey, sizeof(kv_handle->ctx->resources[kv_handle->ctx->count_send].mr->rkey));
+//    strcpy(buf_pointer, value);
+    if(pp_post_send_client(kv_handle->ctx)){
+        printf("error send\n");
+        return 1;
+    }
+    kv_handle->ctx->count_send += 1 % MAX_RESOURCES;
     return 0;
 }
 
@@ -100,10 +115,19 @@ int kv_open(char *servername, void** obj)
     return 0;
 }
 
+void free_set_malloc(KvHandle* kv_handle){
+    struct ibv_wc wc;
+    int ne = ibv_poll_cq(kv_handle->ctx->cq, 1, &wc);
+    if(ne==0){
+        return;
+    }
+
+}
+
 int kv_set(void* obj, const char *key, const char *value)
 {
     KvHandle* kv_handle = (KvHandle *) obj;
-
+//    free_set_malloc(kv_handle); todo
     // We add 1 because strlen does not cont the null byte \0
     size_t key_size = strlen(key) + 1;
     size_t value_size = strlen(value) + 1;
@@ -112,23 +136,14 @@ int kv_set(void* obj, const char *key, const char *value)
     {
         return eager_set(kv_handle, key, value, key_size, value_size);
     }
-    return eager_set(kv_handle, key, value, key_size, value_size);
-//    return rendezvous_set();
-
+    return rendezvous_set(kv_handle, key, value, key_size, value_size);
 }
 
-void free_set_malloc(KvHandle* kv_handle){
-    struct ibv_wc wc;
-    int ne = ibv_poll_cq(kv_handle->ctx->cq, 1, &wc);
-    if(ne==0){
-        return;
-    }
-}
+
 int kv_get(void *obj, const char *key, char **value)
 {
     size_t key_size = strlen(key) + 1;
     KvHandle* kv_handle = (KvHandle *) obj;
-    free_set_malloc(kv_handle);
 
     kv_get_helper(kv_handle, key, "", key_size, 0, GET, 2);
     MessageData messageData;

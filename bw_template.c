@@ -461,7 +461,6 @@ int pp_post_send(struct pingpong_context *ctx)
     };
 
     struct ibv_send_wr *bad_wr, wr = {
-//todo wr_id
             .wr_id	    = I_SEND,
             .sg_list    = &list,
             .num_sge    = 1,
@@ -473,12 +472,12 @@ int pp_post_send(struct pingpong_context *ctx)
     return ibv_post_send(ctx->qp, &wr, &bad_wr);
 }
 
-char* add_message_data_to_buf(char* buf_pointer, size_t keySize, size_t valueSize, enum OperationType operation)
+char* add_message_data_to_buf(char* buf_pointer, size_t keySize, size_t valueSize, enum OperationType operation, enum Protocol protocol)
 {
     MessageData messageData;
     memset(&messageData, 0, sizeof(MessageData));
     messageData.operationType = operation;
-    messageData.Protocol = EAGER;
+    messageData.Protocol = protocol;
     messageData.keySize = keySize;
     messageData.valueSize = valueSize;
     memcpy(buf_pointer, &messageData, sizeof(MessageData));
@@ -569,14 +568,15 @@ int pp_post_recv(struct pingpong_context *ctx, int resource_idx)
     return 0;
 }
 
-int init_resource(Resource* resource, struct ibv_pd* pd, size_t size)
+
+int init_resource(Resource* resource, struct ibv_pd* pd, size_t size,enum ibv_access_flags access)
 {
     void* buf = malloc(size);
     if (buf == NULL)
     {
         return 1;
     }
-    struct ibv_mr* mr = init_mr(pd, buf, size, IBV_ACCESS_LOCAL_WRITE);
+    struct ibv_mr* mr = init_mr(pd, buf, size, access);
     if (mr == NULL)
     {
         return 1;
@@ -592,7 +592,7 @@ int pp_post_recv_server(struct pingpong_context *ctx, int rx)
     int i;
     for (i = 0; i < rx; ++i)
     {
-        if (init_resource(ctx->resources + i, ctx->pd, MAX_BUF_SIZE) != 0)
+        if (init_resource(ctx->resources + i, ctx->pd, MAX_BUF_SIZE,IBV_ACCESS_LOCAL_WRITE) != 0)
         {
             fprintf(stderr, "Failed to init resource\n");
             return i;

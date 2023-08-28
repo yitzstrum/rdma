@@ -138,7 +138,7 @@ size_t parse_header(const void* buf, enum Protocol* protocol, enum OperationType
 
 
 //set and get
-char* add_message_data_to_buf(char* buf_pointer, size_t keySize, size_t valueSize, enum OperationType operation);
+char* add_message_data_to_buf(char* buf_pointer, size_t keySize, size_t valueSize, enum OperationType operation,enum Protocol protocol);
 char* get_wr_details_server(char* buffer, MessageDataGetServer* messageDataGetServer);
 char* get_wr_details_client(KvHandle *kv_handle, MessageData* messageData);
 int pp_post_send_and_wait(KvHandle *kv_handle, struct pingpong_context* ctx, struct ibv_wc* wc, int iters);
@@ -155,7 +155,7 @@ int pp_post_recv(struct pingpong_context *ctx, int resource_idx);
 int pp_post_rdma(struct pingpong_context* ctx, uintptr_t remote_addr, uint32_t rkey, size_t length, enum ibv_wr_opcode opcode);
 
 
-int init_resource(Resource* resource, struct ibv_pd* pd, size_t size);
+int init_resource(Resource* resource, struct ibv_pd* pd, size_t size,enum ibv_access_flags access);
 #endif /* BW_TEMPLATE_H */
 
 
