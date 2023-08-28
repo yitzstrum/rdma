@@ -260,8 +260,8 @@ int init_network_context(KvHandle* networkContext, const char* servername)
     networkContext->my_dest.qpn = networkContext->ctx->qp->qp_num;
     networkContext->my_dest.psn = lrand48() & 0xffffff;
     inet_ntop(AF_INET6, &networkContext->my_dest.gid, gid, sizeof gid);
-    printf("  local address:  LID 0x%04x, QPN 0x%06x, PSN 0x%06x, GID %s\n",
-           networkContext->my_dest.lid, networkContext->my_dest.qpn, networkContext->my_dest.psn, gid);
+//    printf("  local address:  LID 0x%04x, QPN 0x%06x, PSN 0x%06x, GID %s\n",
+//           networkContext->my_dest.lid, networkContext->my_dest.qpn, networkContext->my_dest.psn, gid);
 
     return 0;
 }
