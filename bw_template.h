@@ -24,6 +24,7 @@ enum Protocol {
     EAGER,
     RENDEZVOUS
 };
+
 enum OperationType {
     GET,
     SET
@@ -31,6 +32,8 @@ enum OperationType {
 
 enum Wr_Id {
     I_SEND = MAX_RESOURCES,
+    I_SEND_SET ,
+    I_SEND_GET,
     CLIENT,
     RDMA
 };
@@ -61,6 +64,7 @@ typedef struct Resource
 } Resource;
 
 struct pingpong_context {
+    int count_send;
     struct ibv_comp_channel *channel;
     struct ibv_pd           *pd;
     struct ibv_mr           *mr;
@@ -147,12 +151,11 @@ struct pingpong_dest *pp_server_exch_dest(struct ibv_qp* qp, const struct pingpo
 
 int get_client_identifier(KvHandle * pHandler, uint32_t src_qp);
 
-//int pp_post_recv(struct pingpong_context *ctx, int resource_idx);
+int pp_post_recv(struct pingpong_context *ctx, int resource_idx);
+int pp_post_rdma(struct pingpong_context* ctx, uintptr_t remote_addr, uint32_t rkey, size_t length, enum ibv_wr_opcode opcode);
 
-//int pp_post_rdma(struct pingpong_context* ctx, uintptr_t remote_addr, uint32_t rkey, size_t length, enum ibv_wr_opcode opcode);
 
-
-//int init_resource(Resource* resource, struct ibv_pd* pd, size_t size);
+int init_resource(Resource* resource, struct ibv_pd* pd, size_t size);
 #endif /* BW_TEMPLATE_H */
 
 
