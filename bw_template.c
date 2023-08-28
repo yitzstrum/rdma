@@ -211,7 +211,7 @@ int pp_post_recv_client(struct pingpong_context *ctx, int n)
             .lkey    = ctx->mr->lkey
     };
     struct ibv_recv_wr wr = {
-            .wr_id        = 203,
+            .wr_id        = CLIENT_RECEIVE,
             .sg_list    = &list,
             .num_sge    = 1,
             .next       = NULL
@@ -448,6 +448,39 @@ int pull_cq(KvHandle * pHandler, struct ibv_wc *wc, int iters)
                     wc->status, (int) wc->wr_id);
             return 1;
         }
+    }
+    return 0;
+}
+
+int empty_cq(KvHandle* pHandler, struct ibv_wc *wc)
+{
+    int wr_id = 0;
+    while (wr_id != CLIENT_RECEIVE)
+    {
+        int ne;
+        do {
+            ne = ibv_poll_cq(pHandler->ctx->cq, 1, wc);
+            if (ne < 0) {
+                fprintf(stderr, "poll CQ failed %d\n", ne);
+                wc = NULL;
+                return 1;
+            }
+        } while (ne < 1);
+
+        if (wc->status != IBV_WC_SUCCESS) {
+            fprintf(stderr, "Failed status %s (%d) for wr_id %d\n",
+                    ibv_wc_status_str(wc->status),
+                    wc->status, (int) wc->wr_id);
+            return 1;
+        }
+        wr_id = wc->wr_id;
+        // The wc is the message received from the server through the post receive queue
+        if (wr_id < MAX_RESOURCES)
+        {
+            free(pHandler->ctx->resources[wr_id].buf);
+            ibv_dereg_mr(pHandler->ctx->resources[wr_id].mr);
+        }
+
     }
     return 0;
 }

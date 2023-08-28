@@ -6,7 +6,7 @@
 #include <string.h>
 #include "bw_template.h"
 
-int pp_post_send_client(struct pingpong_context *ctx)
+int pp_post_send_set_client(struct pingpong_context *ctx)
 {
     struct ibv_sge list = {
             .addr	= (uintptr_t)ctx->resources[ctx->count_send].buf,
@@ -15,7 +15,27 @@ int pp_post_send_client(struct pingpong_context *ctx)
     };
 
     struct ibv_send_wr *bad_wr, wr = {
-            .wr_id	    = ctx->count_send + MAX_RESOURCES,
+            .wr_id	    = ctx->count_send,
+            .sg_list    = &list,
+            .num_sge    = 1,
+            .opcode     = IBV_WR_SEND,
+            .send_flags = IBV_SEND_SIGNALED,
+            .next       = NULL
+    };
+
+    return ibv_post_send(ctx->qp, &wr, &bad_wr);
+}
+
+int pp_post_send_get_client(struct pingpong_context *ctx)
+{
+    struct ibv_sge list = {
+            .addr	= (uintptr_t)ctx->buf,
+            .length = ctx->size,
+            .lkey	= ctx->mr->lkey
+    };
+
+    struct ibv_send_wr *bad_wr, wr = {
+            .wr_id	    = I_SEND_GET,
             .sg_list    = &list,
             .num_sge    = 1,
             .opcode     = IBV_WR_SEND,
@@ -35,25 +55,11 @@ int eager_set(KvHandle* kv_handle, const char* key, const char* value, size_t ke
     strcpy(buf_pointer, key);
     buf_pointer += sizeof(key);
     strcpy(buf_pointer, value);
-    if(pp_post_send_client(kv_handle->ctx)){
+    if(pp_post_send_set_client(kv_handle->ctx)){
         printf("error send\n");
         return 1;
     }
     kv_handle->ctx->count_send += 1 % MAX_RESOURCES;
-    return 0;
-}
-
-
-int kv_get_helper(KvHandle* kv_handle, const char* key, const char* value, size_t keySize, size_t valueSize, enum OperationType operation, int iters)
-{
-    char* buf_pointer = kv_handle->ctx->buf;
-    buf_pointer = add_message_data_to_buf(buf_pointer, keySize, valueSize, operation, EAGER);
-    strcpy(buf_pointer, key);
-
-    if (pp_post_send_and_wait(kv_handle, kv_handle->ctx, NULL, iters)){
-        perror("Client failed to post send the request");
-        return 1;
-    }
     return 0;
 }
 
@@ -71,7 +77,7 @@ int eager_get(MessageData* messageData, char* data, char** value)
 int rendezvous_set(KvHandle* kv_handle, const char* key, const char* value, size_t keySize, size_t valueSize)
 {
     init_resource(&kv_handle->ctx->resources[kv_handle->ctx->count_send],kv_handle->ctx->pd,MAX_BUF_SIZE,IBV_ACCESS_REMOTE_READ);
-    char* buf_pointer =kv_handle->ctx->resources[kv_handle->ctx->count_send].buf;
+    char* buf_pointer = kv_handle->ctx->resources[kv_handle->ctx->count_send].buf;
     buf_pointer = add_message_data_to_buf(buf_pointer, keySize, valueSize, SET,RENDEZVOUS);
     strcpy(buf_pointer, key);
     buf_pointer += sizeof(key);
@@ -80,7 +86,7 @@ int rendezvous_set(KvHandle* kv_handle, const char* key, const char* value, size
     *(void **)value_data = value;
     memcpy(value_data + sizeof(value), &kv_handle->ctx->resources[kv_handle->ctx->count_send].mr->rkey, sizeof(kv_handle->ctx->resources[kv_handle->ctx->count_send].mr->rkey));
 //    strcpy(buf_pointer, value);
-    if(pp_post_send_client(kv_handle->ctx)){
+    if(pp_post_send_set_client(kv_handle->ctx)){
         printf("error send\n");
         return 1;
     }
@@ -115,15 +121,6 @@ int kv_open(char *servername, void** obj)
     return 0;
 }
 
-void free_set_malloc(KvHandle* kv_handle){
-    struct ibv_wc wc;
-    int ne = ibv_poll_cq(kv_handle->ctx->cq, 1, &wc);
-    if(ne==0){
-        return;
-    }
-
-}
-
 int kv_set(void* obj, const char *key, const char *value)
 {
     KvHandle* kv_handle = (KvHandle *) obj;
@@ -142,10 +139,20 @@ int kv_set(void* obj, const char *key, const char *value)
 
 int kv_get(void *obj, const char *key, char **value)
 {
-    size_t key_size = strlen(key) + 1;
+    size_t keySize = strlen(key) + 1;
     KvHandle* kv_handle = (KvHandle *) obj;
+    char* buf_pointer = kv_handle->ctx->buf;
+    buf_pointer = add_message_data_to_buf(buf_pointer, keySize, 0, GET, EAGER);
+    strcpy(buf_pointer, key);
 
-    kv_get_helper(kv_handle, key, "", key_size, 0, GET, 2);
+    if (pp_post_send_get_client(kv_handle->ctx)){
+        perror("Client failed to post send the request");
+        return 1;
+    }
+    struct ibv_wc wc;
+
+    empty_cq(kv_handle, &wc);
+
     MessageData messageData;
     char* data = get_wr_details_client(kv_handle, &messageData);
 //    printf("Message Protocol -> %u\n", messageData.Protocol);
