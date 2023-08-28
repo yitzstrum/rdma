@@ -452,10 +452,10 @@ int pull_cq(KvHandle * pHandler, struct ibv_wc *wc, int iters)
     return 0;
 }
 
-int empty_cq(KvHandle* pHandler, struct ibv_wc *wc)
+int empty_cq(KvHandle* pHandler, struct ibv_wc *wc, int stopCondition)
 {
     int wr_id = 0;
-    while (wr_id != CLIENT_RECEIVE)
+    while (wr_id != stopCondition)
     {
         int ne;
         do {
@@ -464,6 +464,11 @@ int empty_cq(KvHandle* pHandler, struct ibv_wc *wc)
                 fprintf(stderr, "poll CQ failed %d\n", ne);
                 wc = NULL;
                 return 1;
+            }
+            // If I came from the client set function I don't block the flow
+            if (stopCondition == I_SEND_SET && ne == 0)
+            {
+                return 0;
             }
         } while (ne < 1);
 

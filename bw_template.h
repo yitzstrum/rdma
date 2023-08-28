@@ -130,7 +130,7 @@ void gid_to_wire_gid(const union ibv_gid *gid, char wgid[]);
 
 //set and get - helper function
 int add_work_recv(struct pingpong_context* ctx);
-int empty_cq(KvHandle* pHandler, struct ibv_wc *wc);
+int empty_cq(KvHandle* pHandler, struct ibv_wc *wc, int stopCondition);
 int pull_cq(KvHandle * pHandler, struct ibv_wc *wc, int iters);
 int pp_post_send(struct pingpong_context *ctx);
 size_t parse_header(const void* buf, enum Protocol* protocol, enum OperationType* operation, size_t* key_size, size_t* val_size);

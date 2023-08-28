@@ -129,6 +129,8 @@ int kv_set(void* obj, const char *key, const char *value)
     size_t key_size = strlen(key) + 1;
     size_t value_size = strlen(value) + 1;
 
+    struct ibv_wc wc;
+    empty_cq(kv_handle, &wc, I_SEND_SET);
     if (key_size + value_size < MAX_EAGER_SIZE)
     {
         return eager_set(kv_handle, key, value, key_size, value_size);
@@ -149,9 +151,9 @@ int kv_get(void *obj, const char *key, char **value)
         perror("Client failed to post send the request");
         return 1;
     }
-    struct ibv_wc wc;
 
-    empty_cq(kv_handle, &wc);
+    struct ibv_wc wc;
+    empty_cq(kv_handle, &wc, CLIENT_RECEIVE);
 
     MessageData messageData;
     char* data = get_wr_details_client(kv_handle, &messageData);
