@@ -111,8 +111,8 @@ int kv_open(char *servername, void** obj)
     }
 
     inet_ntop(AF_INET6, &networkContext->rem_dest->gid, networkContext->gid, sizeof networkContext->gid);
-    printf("  remote address: LID 0x%04x, QPN 0x%06x, PSN 0x%06x, GID %s\n",
-           networkContext->rem_dest->lid, networkContext->rem_dest->qpn, networkContext->rem_dest->psn, networkContext-> gid);
+//    printf("  remote address: LID 0x%04x, QPN 0x%06x, PSN 0x%06x, GID %s\n",
+//           networkContext->rem_dest->lid, networkContext->rem_dest->qpn, networkContext->rem_dest->psn, networkContext-> gid);
 
     if (pp_connect_ctx(networkContext->ctx->qp, networkContext->my_dest.psn, networkContext->rem_dest, networkContext->gidx)) {
         return 1;
