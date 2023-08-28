@@ -47,7 +47,7 @@ int eager_set(KvHandle* kv_handle, const char* key, const char* value, size_t ke
 int kv_get_helper(KvHandle* kv_handle, const char* key, const char* value, size_t keySize, size_t valueSize, enum OperationType operation, int iters)
 {
     char* buf_pointer = kv_handle->ctx->buf;
-    buf_pointer = add_message_data_to_buf(buf_pointer, keySize, valueSize, operation);
+    buf_pointer = add_message_data_to_buf(buf_pointer, keySize, valueSize, operation, EAGER);
     strcpy(buf_pointer, key);
 
     if (pp_post_send_and_wait(kv_handle, kv_handle->ctx, NULL, iters)){
