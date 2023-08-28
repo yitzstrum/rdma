@@ -569,7 +569,7 @@ int pp_post_recv(struct pingpong_context *ctx, int resource_idx)
 }
 
 
-int init_resource(Resource* resource, struct ibv_pd* pd, size_t size,enum ibv_access_flags access)
+int init_resource(Resource* resource, struct ibv_pd* pd, size_t size, enum ibv_access_flags access)
 {
     void* buf = malloc(size);
     if (buf == NULL)
@@ -592,7 +592,7 @@ int pp_post_recv_server(struct pingpong_context *ctx, int rx)
     int i;
     for (i = 0; i < rx; ++i)
     {
-        if (init_resource(ctx->resources + i, ctx->pd, MAX_BUF_SIZE,IBV_ACCESS_LOCAL_WRITE) != 0)
+        if (init_resource(ctx->resources + i, ctx->pd, MAX_BUF_SIZE, IBV_ACCESS_LOCAL_WRITE) != 0)
         {
             fprintf(stderr, "Failed to init resource\n");
             return i;

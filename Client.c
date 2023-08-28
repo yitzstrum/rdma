@@ -19,7 +19,7 @@ int pp_post_send_client(struct pingpong_context *ctx)
             .sg_list    = &list,
             .num_sge    = 1,
             .opcode     = IBV_WR_SEND,
-//            .send_flags = IBV_SEND_SIGNALED,
+            .send_flags = IBV_SEND_SIGNALED,
             .next       = NULL
     };
 
@@ -28,8 +28,8 @@ int pp_post_send_client(struct pingpong_context *ctx)
 
 int eager_set(KvHandle* kv_handle, const char* key, const char* value, size_t keySize, size_t valueSize)
 {
-    init_resource(&kv_handle->ctx->resources[kv_handle->ctx->count_send],kv_handle->ctx->pd,MAX_BUF_SIZE);
-    char* buf_pointer =kv_handle->ctx->resources[kv_handle->ctx->count_send].buf;
+    init_resource(&kv_handle->ctx->resources[kv_handle->ctx->count_send], kv_handle->ctx->pd, MAX_BUF_SIZE, IBV_ACCESS_LOCAL_WRITE);
+    char* buf_pointer = kv_handle->ctx->resources[kv_handle->ctx->count_send].buf;
     buf_pointer = add_message_data_to_buf(buf_pointer, keySize, valueSize, SET,EAGER);
 
     strcpy(buf_pointer, key);
