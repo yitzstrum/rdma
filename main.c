@@ -159,7 +159,7 @@ int main(int argc, char *argv[])
 //            }
 //            printf("%s: %s\n", key2, received_value);
 
-            kv_release(received_value);
+//            kv_release(received_value);
         }
 
         else
