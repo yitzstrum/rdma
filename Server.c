@@ -236,6 +236,8 @@ int rdma_read_returned(KvHandle* kv_handle, int wr_id, int client_id)
 
     Resource resource = kv_handle->clients_ctx[client_id]->resources[wr_id];
     printf("-------------hash_table_set--------------------------\n");
+    printf("The key is: %s\n", resource.key_buffer);
+    printf("The value is: %s\n", resource.value_buffer);
     if (hashTable_set(resource.key_buffer, resource.value_buffer, kv_handle->hashTable))
     {
         fprintf(stderr, "Failed to set the (key, value) pair");
