@@ -152,8 +152,7 @@ struct pingpong_dest *pp_server_exch_dest(struct ibv_qp* qp, const struct pingpo
 int get_client_identifier(KvHandle * pHandler, uint32_t src_qp);
 
 int pp_post_recv(struct pingpong_context *ctx, int resource_idx);
-int pp_post_rdma(struct pingpong_context* ctx, void* buf, MessageData* messageData, enum ibv_wr_opcode opcode);
-
+int pp_post_rdma(struct pingpong_context* ctx, MessageData* messageData, enum ibv_wr_opcode opcode);
 int init_resource(Resource* resource, struct ibv_pd* pd, size_t size,enum ibv_access_flags access);
 #endif /* BW_TEMPLATE_H */
 
