@@ -152,10 +152,10 @@ int kv_set(void* obj, const char *key, const char *value)
 
     struct ibv_wc wc;
     empty_cq(kv_handle, &wc, I_SEND_SET);
-    if (key_size + value_size < MAX_EAGER_SIZE)
-    {
-        return eager_set(kv_handle, key, value, key_size, value_size);
-    }
+//    if (key_size + value_size < MAX_EAGER_SIZE)
+//    {
+//        return eager_set(kv_handle, key, value, key_size, value_size);
+//    }
 
     return rendezvous_set(kv_handle, key, value, key_size, value_size);
 }
