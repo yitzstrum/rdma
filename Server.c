@@ -200,12 +200,12 @@ int process(KvHandle *kv_handle){
 //    printf("key_size: %zu \n",messageDataServer.keySize);
 //    printf("data: %s \n",data);
 //    printf("data: %s \n",data);
-    switch (messageData.operationType) {
+    switch (messageData->operationType) {
         case SET:
-            kv_set_server(kv_handle, &messageData, data);
+            kv_set_server(kv_handle, messageData, data);
             break;
         case GET:
-            kv_get_server(kv_handle, &messageData, data);
+            kv_get_server(kv_handle, messageData, data);
             break;
         default:
             return 1;
