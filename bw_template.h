@@ -57,6 +57,7 @@ typedef struct MessageDataGetServer
 
 typedef struct Resource
 {
+    void* buf_for_rdma_set_client;
     void* buf;
     struct ibv_mr* mr;
 } Resource;
