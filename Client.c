@@ -76,6 +76,8 @@ int eager_get(MessageData* messageData, char* data, char** value)
 
 // This function creates a buffer and mr for the value
 int init_value(KvHandle* kv_handle, Resource* resources, const char* value){
+    printf("-----------init_value-----------\n");
+    printf("The value is: %s\n", value);
     size_t valSize = strlen(value) + 1;
     resources->value_buffer = malloc(valSize);
     strcpy(resources->value_buffer, value);
