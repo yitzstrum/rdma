@@ -261,7 +261,7 @@ int process(KvHandle *kv_handle){
     if(check_who_send(&wc)){return 0;}
 
     int client_id = get_client_id(kv_handle, &wc);
-
+    printf("opcode: %d\n", wc.opcode);
     if (wc.opcode == IBV_WC_RDMA_READ)
     {
         printf("-------------rdma_read_returned-------------\n");
