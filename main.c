@@ -140,6 +140,11 @@ int main(int argc, char *argv[])
 
             sleep(10);
             char *received_value = NULL;
+            kv_get((void *)kv_handle, key, &received_value);
+            kv_get((void *)kv_handle, key, &received_value);
+            kv_get((void *)kv_handle, key, &received_value);
+            kv_get((void *)kv_handle, key, &received_value);
+            kv_get((void *)kv_handle, key, &received_value);
             if (kv_get((void *)kv_handle, key, &received_value) != 0)
             {
                 fprintf(stderr, "Client failed to preform get\n");
