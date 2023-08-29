@@ -85,7 +85,7 @@ void get_wr_id(MessageData* messageData, struct ibv_wc* wc){
 char* get_job(KvHandle *kv_handle, MessageData* messageData, struct ibv_wc* wc){
     printf("-------------get_job_func-------------\n");
     void* newBuff = malloc(sizeof(MessageData));
-    char* buffer = kv_handle->clients_ctx[messageData->client_id]->resources[messageData->wr_id].buf;
+    void* buffer = kv_handle->clients_ctx[messageData->client_id]->resources[messageData->wr_id].buf;
     memcpy(newBuff, buffer, sizeof(MessageData));
     messageData = (MessageData*) newBuff;
     get_id_client(kv_handle, messageData, wc);
