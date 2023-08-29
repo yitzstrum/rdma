@@ -129,9 +129,10 @@ int eager_get_server(KvHandle *kv_handle, MessageDataGetServer* messageDataGetSe
     return 0;
 }
 
-int rendezvous_set_server(){
+int rendezvous_set_server(KvHandle *kv_handle, MessageDataGetServer* messageDataGetServer, char* data){
     return 0;
 }
+
 //int rendezvous_get(){
 //    return 0;
 //}
@@ -141,7 +142,7 @@ int kv_set_server(KvHandle *kv_handle,MessageDataGetServer* messageDataGetServer
         case EAGER:
             return eager_set_server(kv_handle,messageDataGetServer,data);
         case RENDEZVOUS:
-            return rendezvous_set_server();
+            return rendezvous_set_server(kv_handle,messageDataGetServer,data);
     }
 
     return 1;
@@ -196,91 +197,3 @@ void start_server(void* kv){
     if (connect_to_clients(kv_handle)) {return;}
     while(process(kv_handle)==0){};
 }
-
-
-//void start_server2(void* obj){
-//
-//    while (1) {
-//        if (pull_cq(pHandler, &wc, 1) != 0)
-//        {
-//            perror("Server failed pull cq:");
-//            return;
-//        }
-//
-//
-//        if ((client_idx = get_client_identifier(pHandler, wc.qp_num)) == -1)
-//        {
-//            fprintf(stderr, "failed to find client\n");
-//        }
-//
-//
-//        if (wc.opcode == IBV_WC_RDMA_READ)
-//        {
-//            end_rendezvous_read(pHandler, client_idx, hashTable);
-//            continue;
-//        }
-//
-//
-//        if (wc.opcode == IBV_WC_RDMA_WRITE)
-//        {
-//            end_rendezvous_write(pHandler, client_idx);
-//            continue;
-//        }
-//
-//
-//        int resource_idx = (int)wc.wr_id;
-//
-//
-//        if (resource_idx >= MAX_RESOURCES || resource_idx < 0)
-//        {
-////            continue;
-//            fprintf(stderr, "Invalid wr_id %d (client idx %d)\n", resource_idx, client_idx);
-//            parse_header(pHandler->clients_ctx[client_idx]->buf, &protocol, &operation, &key_size, &val_size);
-//            char* protocol_name = protocol == RANDEVOUS ? "rendezvous" : "eager";
-//            char* operation_name = operation == GET ? "get" : "set";
-//            printf("client %d %s %s resource %d key_s %zu, val_s %zu\n", client_idx, protocol_name, operation_name, resource_idx, key_size, val_size);
-//            printf("is_server %d\n", ((bool *)pHandler->clients_ctx[client_idx]->buf)[MAX_BUF_SIZE - 1]);
-//            break;
-//        }
-//
-//
-//
-//        void* buf = pHandler->clients_ctx[client_idx]->resources[resource_idx].buf;
-//        size_t header_size = parse_header(buf, &protocol, &operation, &key_size, &val_size);
-//        char *data = (char *) ((uint8_t *) buf + header_size);
-//
-//        char* protocol_name = protocol == RANDEVOUS ? "rendezvous" : "eager";
-//        char* operation_name = operation == GET ? "get" : "set";
-//        printf("client %d %s %s resource %d key_s %zu, val_s %zu\n", client_idx, protocol_name, operation_name, resource_idx, key_size, val_size);
-//
-//
-//
-//        switch (operation) {
-//            case SET:
-//                if (handle_set(pHandler, data, hashTable, client_idx, protocol, key_size, val_size) != 0) {
-//                    fprintf(stderr, "Server failed to handle set\n");
-//                    error = true;
-//                    break;
-//                }
-//                pp_post_recv(pHandler->clients_ctx[client_idx], resource_idx);
-//                break;
-//
-//            case GET:
-//                if (handle_get(pHandler, data, hashTable, client_idx, resource_idx, key_size) != 0) {
-//                    fprintf(stderr, "Server failed to handle get\n");
-//                    error = true;
-//                    break;
-//                }
-//                break;
-//            default:
-//                fprintf(stderr, "Server does not support the requested operation\n");
-//                error = true;
-//                break;
-//        }
-//
-//        if (error) {
-//            hashTable_delete_cleanup(hashTable);
-//            return;
-//        }
-//    }
-//}

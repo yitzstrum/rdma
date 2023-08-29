@@ -35,6 +35,14 @@ enum Wr_Id {
     CLIENT_RECEIVE,
     RDMA
 };
+typedef struct MessageDataRend
+{
+    enum Protocol Protocol;
+    enum OperationType operationType;
+    size_t keySize;
+    size_t valueSize;
+
+} MessageDataRend;
 
 typedef struct MessageData
 {
@@ -42,7 +50,6 @@ typedef struct MessageData
     enum OperationType operationType;
     size_t keySize;
     size_t valueSize;
-
 } MessageData;
 
 typedef struct MessageDataGetServer
@@ -55,11 +62,21 @@ typedef struct MessageDataGetServer
     int wr_id;
 } MessageDataGetServer;
 
+typedef struct MessageDataGetServerRend
+{
+    enum Protocol Protocol;
+    enum OperationType operationType;
+    size_t keySize;
+    size_t valueSize;
+    int client_id;
+    int wr_id;
+} MessageDataGetServerRend;
 typedef struct Resource
 {
-    void* buf_for_rdma_set_client;
     void* buf;
     struct ibv_mr* mr;
+    void* buf_for_rdma_set_client;
+    struct ibv_mr* mr_for_rdma_set_client;
 } Resource;
 
 struct pingpong_context {
