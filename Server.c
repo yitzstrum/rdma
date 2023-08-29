@@ -69,7 +69,7 @@ int check_who_send(struct ibv_wc* wc){
 
 
 
-void get_id_client(KvHandle *kv_handle, MessageData* messageData, struct ibv_wc* wc){
+int get_client_id(KvHandle *kv_handle, MessageData* messageData, struct ibv_wc* wc){
     for(int client=0; client<NUM_OF_CLIENTS; client++){
         if (wc->qp_num == kv_handle->clients_ctx[client]->qp->qp_num){
             messageData->client_id = client;
@@ -78,18 +78,18 @@ void get_id_client(KvHandle *kv_handle, MessageData* messageData, struct ibv_wc*
     }
 }
 
-void get_wr_id(MessageData* messageData, struct ibv_wc* wc){
-    messageData->wr_id = wc->wr_id;
-}
-
 char* get_job(KvHandle *kv_handle, MessageData* messageData, struct ibv_wc* wc){
     printf("-------------get_job_func-------------\n");
-    get_id_client(kv_handle, messageData, wc);
-    get_wr_id(messageData, wc);
+    int wr_id = wc->wr_id;
+    int client_id = get_client_id(kv_handle, messageData, wc);
+
     void* newBuff = malloc(sizeof(MessageData));
-    void* buffer = kv_handle->clients_ctx[messageData->client_id]->resources[messageData->wr_id].buf;
+    void* buffer = kv_handle->clients_ctx[client_id]->resources[wr_id].buf;
     memcpy(newBuff, buffer, sizeof(MessageData));
     messageData = (MessageData*) newBuff;
+
+    messageData->client_id = client_id;
+    messageData->wr_id = wr_id;
 
     printf("Protocol: %u\n", messageData->Protocol);
     printf("operationType: %u\n", messageData->operationType);
