@@ -48,8 +48,6 @@ int connect_to_clients(KvHandle* networkContext)
         if(init_clients_routs(networkContext, i)){flag_success= 1;break;}
         if(init_clients_dest(networkContext, i)){flag_success= 1;break;}
         inet_ntop(AF_INET6, &networkContext->rem_dest->gid, networkContext->gid, sizeof(networkContext->gid));
-//        printf("  remote address: LID 0x%04x, QPN 0x%06x, PSN 0x%06x, GID %s\n",
-//               networkContext->rem_dest->lid, networkContext->rem_dest->qpn, networkContext->rem_dest->psn, networkContext->gid);
     }
     if (flag_success){
         fprintf(stderr, "Couldn't connect clients\n");
@@ -58,8 +56,6 @@ int connect_to_clients(KvHandle* networkContext)
     return 0;
 }
 
-
-
 int check_who_send(struct ibv_wc* wc){
     if(wc->wr_id == I_SEND){
         return 1;
@@ -67,21 +63,30 @@ int check_who_send(struct ibv_wc* wc){
     return 0;
 }
 
-
-
-int get_client_id(KvHandle *kv_handle, MessageData* messageData, struct ibv_wc* wc){
+int get_client_id(KvHandle *kv_handle, struct ibv_wc* wc){
     for(int client=0; client<NUM_OF_CLIENTS; client++){
         if (wc->qp_num == kv_handle->clients_ctx[client]->qp->qp_num){
-            messageData->client_id = client;
-            break;
+            return client;
         }
     }
+}
+
+void free_and_reset_ptr(void* resource)
+{
+    free(resource);
+    resource = NULL;
+}
+
+void free_and_reset_mr(struct ibv_mr* mr)
+{
+    ibv_dereg_mr(mr);
+    mr = NULL;
 }
 
 char* get_job(KvHandle *kv_handle, MessageData* messageData, struct ibv_wc* wc){
     printf("-------------get_job_func-------------\n");
     int wr_id = wc->wr_id;
-    int client_id = get_client_id(kv_handle, messageData, wc);
+    int client_id = get_client_id(kv_handle, wc);
 
     void* buffer = kv_handle->clients_ctx[client_id]->resources[wr_id].buf;
     memcpy(messageData, buffer, sizeof(MessageData));
@@ -138,14 +143,54 @@ int eager_get_server(KvHandle *kv_handle, MessageData* messageData, char* data){
 }
 
 int rendezvous_set_server(KvHandle *kv_handle, MessageData* messageData, char* data){
-    void* value_address = malloc(sizeof(void*));
-    memcpy(value_address, data, sizeof(void*));
-    data += sizeof(void*);
-    uint32_t* rkey = malloc(sizeof(uint32_t));
-    memcpy(rkey, data, sizeof(uint32_t));
-    printf("Value Address - P: %p\n", value_address);
-    printf("Value Address - S: %s\n", value_address);
-    printf("rkey: %u\n", rkey);
+    printf("-------------rendezvous_set_server-------------\n");
+    int client_id = messageData->client_id;
+    int wr_id = messageData->wr_id;
+
+    // ---------------------------------------------- Memory Allocation ----------------------------------------------
+
+    kv_handle->clients_ctx[client_id]->resources[wr_id].value_buffer = malloc(messageData->valueSize);
+    if (kv_handle->clients_ctx[client_id]->resources[wr_id].value_buffer == NULL)
+    {
+        perror("Failed to allocate memory for value");
+        return 1;
+    }
+    kv_handle->clients_ctx[client_id]->resources[wr_id].key_buffer = malloc(messageData->keySize);
+    if (kv_handle->clients_ctx[client_id]->resources[wr_id].key_buffer == NULL)
+    {
+        perror("Failed to allocate memory for key");
+        free(kv_handle->clients_ctx[client_id]->resources[wr_id].value_buffer);
+        return 1;
+    }
+
+    kv_handle->clients_ctx[client_id]->resources[wr_id].value_mr = init_mr(
+            kv_handle->clients_ctx[client_id]->pd,
+            kv_handle->clients_ctx[client_id]->resources[wr_id].value_buffer,
+            messageData->valueSize,
+            IBV_ACCESS_LOCAL_WRITE);
+
+    if (kv_handle->clients_ctx[client_id]->resources[wr_id].value_mr == NULL)
+    {
+        perror("Failed to init memory region");
+        free(kv_handle->clients_ctx[client_id]->resources[wr_id].key_buffer);
+        free(kv_handle->clients_ctx[client_id]->resources[wr_id].value_buffer);
+        return 1;
+    }
+
+    // ---------------------------------------------------------------------------------------------------------------
+
+    memcpy(kv_handle->clients_ctx[messageData->client_id]->resources[messageData->wr_id].key_buffer, data, messageData->keySize);
+    printf("-------------pp_post_rdma-------------\n");
+    if(pp_post_rdma(kv_handle->clients_ctx[messageData->client_id], messageData, IBV_WR_RDMA_READ))
+    {
+        perror("Failed to send RDMA read");
+        free(kv_handle->clients_ctx[client_id]->resources[wr_id].key_buffer);
+        free(kv_handle->clients_ctx[client_id]->resources[wr_id].value_buffer);
+        ibv_dereg_mr(kv_handle->clients_ctx[client_id]->resources[wr_id].value_mr);
+        return 1;
+    }
+
+
     return 0;
 }
 
@@ -158,7 +203,7 @@ int kv_set_server(KvHandle *kv_handle, MessageData* messageData, char* data){
         case EAGER:
             return eager_set_server(kv_handle, messageData, data);
         case RENDEZVOUS:
-            return rendezvous_set_server(kv_handle,messageData, data);
+            return rendezvous_set_server(kv_handle, messageData, data);
     }
 
     return 1;
@@ -176,28 +221,63 @@ int kv_get_server(KvHandle *kv_handle, MessageData* messageData, char* data){
     return 1;
 }
 
+int rdma_read_returned(KvHandle* kv_handle, int wr_id, int client_id)
+{
+    // TODO: Which buffer do we want to send here?
+    strcpy(kv_handle->clients_ctx[client_id]->buf, "FIN");
+
+    if (pp_post_send(kv_handle->clients_ctx[client_id]))
+    {
+        fprintf(stderr, "Failed to send FIN");
+        return 1;
+    }
+
+    Resource resource = kv_handle->clients_ctx[client_id]->resources[wr_id];
+    printf("-------------hash_table_set--------------------------\n");
+    if (hashTable_set(resource.key_buffer, resource.value_buffer, kv_handle->hashTable))
+    {
+        fprintf(stderr, "Failed to set the (key, value) pair");
+        return 1;
+    }
+
+    free_and_reset_ptr(resource.key_buffer);
+    free_and_reset_ptr(resource.value_buffer);
+    free_and_reset_ptr(resource.buf);
+    free_and_reset_mr(resource.value_mr);
+    free_and_reset_mr(resource.mr);
+
+    return 0;
+}
+
+
 int process(KvHandle *kv_handle){
     printf("-------------Starting Server process-------------\n");
     struct ibv_wc wc;
     if(pull_cq(kv_handle,&wc,1)){
         perror("Server failed pull cq:");
-        return 0;}
+        return 0;
+    }
 
     if(check_who_send(&wc)){return 0;}
 
+    int client_id = get_client_id(kv_handle, wc);
+
+    if (wc->opcode == IBV_WC_RDMA_READ)
+    {
+        printf("-------------rdma_read_returned-------------\n");
+        return rdma_read_returned(kv_handle, wc->wr_id, client_id);
+    }
+
     MessageData* messageData = malloc(sizeof(MessageData));
     char* data = get_job(kv_handle, messageData, &wc);
+
+
 
     printf("Protocol: %u\n", messageData->Protocol);
     printf("operationType: %u\n", messageData->operationType);
     printf("keySize: %zu\n", messageData->keySize);
     printf("valueSize: %zu\n", messageData->valueSize);
 
-//    printf("protocol: %d \n",messageDataServer.Protocol);
-//    printf("op: %d \n",messageDataServer.operationType);
-//    printf("key_size: %zu \n",messageDataServer.keySize);
-//    printf("data: %s \n",data);
-//    printf("data: %s \n",data);
     switch (messageData->operationType) {
         case SET:
             kv_set_server(kv_handle, messageData, data);

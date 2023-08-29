@@ -36,7 +36,7 @@ enum Wr_Id {
     RDMA
 };
 
-// ----------------------------------------------- Message Data structs -----------------------------------------------
+// ----------------------------------------------- Message Data Struct -----------------------------------------------
 
 // We use this struct when the client sends a message to the server
 typedef struct MessageData
@@ -59,8 +59,9 @@ typedef struct Resource
 {
     void* buf;
     struct ibv_mr* mr;
-    void* buf_for_rdma_set_client;
-    struct ibv_mr* mr_for_rdma_set_client;
+    void* value_buffer;
+    struct ibv_mr* value_mr;
+    void* key_buffer;
 } Resource;
 
 struct pingpong_context {
@@ -77,8 +78,6 @@ struct pingpong_context {
     struct ibv_port_attr    portinfo;
     //todo resources
     Resource resources[MAX_RESOURCES];
-    Resource rendezvous_set_resource;
-    Resource rendezvous_get_resource;
     void* key;
 };
 
@@ -153,8 +152,7 @@ struct pingpong_dest *pp_server_exch_dest(struct ibv_qp* qp, const struct pingpo
 int get_client_identifier(KvHandle * pHandler, uint32_t src_qp);
 
 int pp_post_recv(struct pingpong_context *ctx, int resource_idx);
-int pp_post_rdma(struct pingpong_context* ctx, uintptr_t remote_addr, uint32_t rkey, size_t length, enum ibv_wr_opcode opcode);
-
+int pp_post_rdma(struct pingpong_context* ctx, void* buf, MessageData* messageData, enum ibv_wr_opcode opcode);
 
 int init_resource(Resource* resource, struct ibv_pd* pd, size_t size,enum ibv_access_flags access);
 #endif /* BW_TEMPLATE_H */

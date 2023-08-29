@@ -77,11 +77,11 @@ int eager_get(MessageData* messageData, char* data, char** value)
 // This function creates a buffer and mr for the value
 int init_value(KvHandle* kv_handle, Resource* resources, const char* value){
     size_t valSize = strlen(value) + 1;
-    resources->buf_for_rdma_set_client = malloc(valSize);
-    strcpy(resources->buf_for_rdma_set_client, value);
-    resources->mr_for_rdma_set_client = init_mr(kv_handle->ctx->pd, resources->buf_for_rdma_set_client, valSize, IBV_ACCESS_REMOTE_READ);
+    resources->value_buffer = malloc(valSize);
+    strcpy(resources->value_buffer, value);
+    resources->value_mr = init_mr(kv_handle->ctx->pd, resources->value_buffer, valSize, IBV_ACCESS_REMOTE_READ);
 
-    if(!resources->mr_for_rdma_set_client ||  resources->buf_for_rdma_set_client==NULL)
+    if(!resources->value_mr || resources->value_buffer == NULL)
     {
         return 1;
     }
@@ -96,13 +96,12 @@ int rendezvous_set(KvHandle* kv_handle, const char* key, const char* value, size
 
     init_resource(&kv_handle->ctx->resources[kv_handle->ctx->count_send], kv_handle->ctx->pd, MAX_BUF_SIZE, IBV_ACCESS_LOCAL_WRITE);
     char* buf_pointer = kv_handle->ctx->resources[kv_handle->ctx->count_send].buf;
-    uint32_t rkey = kv_handle->ctx->resources[kv_handle->ctx->count_send].mr_for_rdma_set_client->rkey;
-    void* value_address = kv_handle->ctx->resources[kv_handle->ctx->count_send].buf_for_rdma_set_client;
+    uint32_t rkey = kv_handle->ctx->resources[kv_handle->ctx->count_send].value_mr->rkey;
+    void* value_address = kv_handle->ctx->resources[kv_handle->ctx->count_send].value_buffer;
 
     buf_pointer = copy_message_data_to_buf(buf_pointer, keySize, valueSize, SET, RENDEZVOUS, value_address, rkey);
 
     printf("Value Address - P: %p\n", value_address);
-    printf("Value Address - S: %s\n", value_address);
     printf("rkey: %u\n", rkey);
 
     strcpy(buf_pointer, key);
@@ -153,10 +152,10 @@ int kv_set(void* obj, const char *key, const char *value)
 
     struct ibv_wc wc;
     empty_cq(kv_handle, &wc, I_SEND_SET);
-    if (key_size + value_size < MAX_EAGER_SIZE)
-    {
-        return eager_set(kv_handle, key, value, key_size, value_size);
-    }
+//    if (key_size + value_size < MAX_EAGER_SIZE)
+//    {
+//        return eager_set(kv_handle, key, value, key_size, value_size);
+//    }
 
     return rendezvous_set(kv_handle, key, value, key_size, value_size);
 }

@@ -575,6 +575,8 @@ int pp_post_send_and_wait(KvHandle *kv_handle, struct pingpong_context* ctx, str
         return 1;
     }
 
+    // TODO: Add work receive
+
     return 0;
 }
 
@@ -750,23 +752,23 @@ struct pingpong_dest *pp_server_exch_dest(struct ibv_qp* qp,
     return rem_dest;
 }
 
-int pp_post_rdma(struct pingpong_context* ctx, uintptr_t remote_addr, uint32_t rkey, size_t length, enum ibv_wr_opcode opcode)
+int pp_post_rdma(struct pingpong_context* ctx, MessageData* messageData, enum ibv_wr_opcode opcode)
 {
     struct ibv_sge list = {
-            .addr   = (uintptr_t)ctx->buf,
-            .length = length,
-            .lkey   = ctx->mr->lkey
+            .addr   = (uintptr_t)ctx->resources[messageData->wr_id].value_buffer,
+            .length = messageData->valueSize,
+            .lkey   = ctx->resources[messageData->wr_id].value_mr->lkey
     };
 
     struct ibv_send_wr* bad_wr;
     struct ibv_send_wr wr = {
-            .wr_id       = 201,
+            .wr_id       = messageData->wr_id,
             .sg_list     = &list,
             .num_sge     = 1,
             .opcode      = opcode,
             .send_flags  = IBV_SEND_SIGNALED,
-            .wr.rdma.remote_addr = remote_addr,
-            .wr.rdma.rkey        = rkey,
+            .wr.rdma.remote_addr = messageData->value_address,
+            .wr.rdma.rkey        = messageData->rkey,
             .next        = NULL
     };
 
