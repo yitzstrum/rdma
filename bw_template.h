@@ -57,6 +57,8 @@ typedef struct MessageDataGetServer
 
 typedef struct Resource
 {
+    void* buf_;
+    struct ibv_mr* mr_;
     void* buf;
     struct ibv_mr* mr;
 } Resource;
