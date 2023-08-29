@@ -127,7 +127,7 @@ int eager_get_server(KvHandle *kv_handle, MessageData* messageData, char* data){
     char* bufferPointer = kv_handle->clients_ctx[messageData->client_id]->buf;
     printf("The size of the value is: %lu\n", strlen(value));
     printf("The value is: %s\n", value);
-    bufferPointer = copy_message_data_to_buf(bufferPointer, 0, strlen(value) + 1, GET, EAGER);
+    bufferPointer = copy_message_data_to_buf(bufferPointer, 0, strlen(value) + 1, GET, EAGER, NULL, 0);
     strcpy(bufferPointer, value);
     if (pp_post_send_and_wait(kv_handle, kv_handle->clients_ctx[messageData->client_id], NULL, 1))
     {

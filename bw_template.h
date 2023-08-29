@@ -139,8 +139,7 @@ size_t parse_header(const void* buf, enum Protocol* protocol, enum OperationType
 
 
 //set and get
-char* copy_message_data_to_buf(char* buf_pointer, size_t keySize, size_t valueSize, enum OperationType operation, enum Protocol protocol);
-char* copy_message_data_rdma_to_buf(char* buf_pointer, size_t keySize, size_t valueSize, enum OperationType operation, enum Protocol protocol, void* value_address, uint32_t rkey);
+char* copy_message_data_to_buf(char* buf_pointer, size_t keySize, size_t valueSize, enum OperationType operation, enum Protocol protocol, void* value_address, uint32_t rkey);
 char* get_message_data(char* buffer, MessageData* messageData);
 char* get_wr_details_client(KvHandle *kv_handle, MessageData* messageData);
 int pp_post_send_and_wait(KvHandle *kv_handle, struct pingpong_context* ctx, struct ibv_wc* wc, int iters);

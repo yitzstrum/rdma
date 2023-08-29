@@ -510,7 +510,7 @@ int pp_post_send(struct pingpong_context *ctx)
     return ibv_post_send(ctx->qp, &wr, &bad_wr);
 }
 
-char* copy_message_data_to_buf(char* buf_pointer, size_t keySize, size_t valueSize, enum OperationType operation, enum Protocol protocol)
+char* copy_message_data_to_buf(char* buf_pointer, size_t keySize, size_t valueSize, enum OperationType operation, enum Protocol protocol, void* value_address, uint32_t rkey)
 {
     MessageData messageData;
     memset(&messageData, 0, sizeof(MessageData));
@@ -518,22 +518,10 @@ char* copy_message_data_to_buf(char* buf_pointer, size_t keySize, size_t valueSi
     messageData.Protocol = protocol;
     messageData.keySize = keySize;
     messageData.valueSize = valueSize;
+    messageData.value_address = value_address;
+    messageData.rkey = rkey;
     memcpy(buf_pointer, &messageData, sizeof(MessageData));
     return buf_pointer + sizeof(MessageData);
-}
-
-char* copy_message_data_rdma_to_buf(char* buf_pointer, size_t keySize, size_t valueSize, enum OperationType operation, enum Protocol protocol, void* value_address, uint32_t rkey)
-{
-    MessageDataRdma messageDataRdma;
-    memset(&messageDataRdma, 0, sizeof(MessageDataRdma));
-    messageDataRdma.operationType = operation;
-    messageDataRdma.Protocol = protocol;
-    messageDataRdma.keySize = keySize;
-    messageDataRdma.valueSize = valueSize;
-    messageDataRdma.value_address = value_address;
-    messageDataRdma.rkey = rkey;
-    memcpy(buf_pointer, &messageDataRdma, sizeof(MessageDataRdma));
-    return buf_pointer + sizeof(MessageDataRdma);
 }
 
 char* get_message_data(char* buffer, MessageData* messageData){
