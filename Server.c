@@ -228,11 +228,11 @@ int rdma_read_returned(KvHandle* kv_handle, int wr_id, int client_id)
     // TODO: Which buffer do we want to send here?
     strcpy(kv_handle->clients_ctx[client_id]->buf, "FIN");
 
-    if (pp_post_send(kv_handle->clients_ctx[client_id]))
-    {
-        fprintf(stderr, "Failed to send FIN");
-        return 1;
-    }
+//    if (pp_post_send(kv_handle->clients_ctx[client_id]))
+//    {
+//        fprintf(stderr, "Failed to send FIN");
+//        return 1;
+//    }
 
     Resource resource = kv_handle->clients_ctx[client_id]->resources[wr_id];
     printf("-------------hash_table_set--------------------------\n");
