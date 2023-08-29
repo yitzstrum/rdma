@@ -539,26 +539,15 @@ char* copy_message_data_rdma_to_buf(char* buf_pointer, size_t keySize, size_t va
 char* get_message_data(char* buffer, MessageData* messageData){
     printf("-------------get_message_data-------------start-------------\n");
 
-    void* newBuff = malloc(sizeof(MessageData));
-    memcpy(newBuff, buffer, sizeof(MessageData));
-    messageData = (MessageData*) newBuff;
+    memcpy(messageData, buffer, sizeof(MessageData));
 
-    memcpy(&messageData->Protocol, buffer, sizeof(messageData->Protocol));
-    buffer += sizeof(messageData->Protocol);
     printf("Protocol: %u\n", messageData->Protocol);
-
-    memcpy(&messageData->operationType, buffer, sizeof(messageData->operationType));
-    buffer += sizeof(messageData->operationType);
     printf("operationType: %u\n", messageData->operationType);
-
-    memcpy(&messageData->keySize, buffer, sizeof(messageData->keySize));
-    buffer += sizeof(messageData->keySize);
     printf("keySize: %zu\n", messageData->keySize);
-
-    memcpy(&messageData->valueSize, buffer, sizeof(messageData->valueSize));
     printf("valueSize: %zu\n", messageData->valueSize);
     printf("-------------get_message_data-------------end-------------\n");
-    return buffer + sizeof(messageData->valueSize);
+
+    return buffer + sizeof(MessageData);
 }
 
 char* get_wr_details_client(KvHandle *kv_handle, MessageData* messageData){

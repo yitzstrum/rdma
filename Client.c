@@ -69,7 +69,7 @@ int eager_get(MessageData* messageData, char* data, char** value)
     *value = malloc(messageData->valueSize);
     if (!*value) {return 1;}
 //    char* data = (char *)((uint8_t*)response + header_size);
-    memcpy(*value , data, messageData->valueSize);
+    memcpy(*value, data, messageData->valueSize);
 //    printf("Value: %s\n", *value);
     return 0;
 }
@@ -178,13 +178,15 @@ int kv_get(void *obj, const char *key, char **value)
     struct ibv_wc wc;
     empty_cq(kv_handle, &wc, CLIENT_RECEIVE);
 
-    MessageData messageData;
-    char* data = get_wr_details_client(kv_handle, &messageData);
+    MessageData* messageData = malloc(sizeof(MessageData));
+    char* data = get_message_data(kv_handle->ctx->buf, messageData);
+
+
 //    printf("Message Protocol -> %u\n", messageData.Protocol);
 //    printf("The client received the following value: %s\n", data);
-    switch (messageData.Protocol) {
+    switch (messageData->Protocol) {
         case EAGER:
-            return eager_get(&messageData,data,value);
+            return eager_get(messageData, data, value);
 //        case RENDEZVOUS:
 //            return rendezvous_get();
         default:
