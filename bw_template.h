@@ -47,21 +47,10 @@ typedef struct MessageData
     size_t valueSize;
     int client_id;
     int wr_id;
-
-} MessageData;
-
-typedef struct MessageDataRdma
-{
-    enum Protocol Protocol;
-    enum OperationType operationType;
-    size_t keySize;
-    size_t valueSize;
     void* value_address;
     uint32_t rkey;
-    int client_id;
-    int wr_id;
 
-} MessageDataRdma;
+} MessageData;
 
 // -------------------------------------------------------------------------------------------------------------------
 
