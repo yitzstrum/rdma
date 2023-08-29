@@ -138,6 +138,7 @@ int main(int argc, char *argv[])
 //                return 1;
 //            }
 
+            sleep(10);
             char *received_value = NULL;
             if (kv_get((void *)kv_handle, key, &received_value) != 0)
             {
