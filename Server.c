@@ -58,6 +58,7 @@ int connect_to_clients(KvHandle* networkContext)
 
 int check_who_send(struct ibv_wc* wc){
     if(wc->wr_id == I_SEND){
+        printf("------------ check_who_send ------------\n");
         return 1;
     }
     return 0;
