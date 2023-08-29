@@ -119,24 +119,24 @@ int main(int argc, char *argv[])
 
 //            measure_eager_throughput(networkContext);
             const char *key = "key";
-            const char *key1 = "key1";
-            const char *key2 = "key2";
+//            const char *key1 = "key1";
+//            const char *key2 = "key2";
             const char *value = "value";
-            const char *value1 = "value1";
-            const char *value2 = "value2";
+//            const char *value1 = "value1";
+//            const char *value2 = "value2";
 
             if (kv_set((void *)networkContext, key, value) != 0)
             {
                 return 1;
             }
-            if (kv_set((void *)networkContext, key1, value1) != 0)
-            {
-                return 1;
-            }
-            if (kv_set((void *)networkContext, key2, value2) != 0)
-            {
-                return 1;
-            }
+//            if (kv_set((void *)networkContext, key1, value1) != 0)
+//            {
+//                return 1;
+//            }
+//            if (kv_set((void *)networkContext, key2, value2) != 0)
+//            {
+//                return 1;
+//            }
 
             char *received_value = NULL;
             if (kv_get((void *)networkContext, key, &received_value) != 0)
@@ -145,18 +145,19 @@ int main(int argc, char *argv[])
                 return 1;
             }
             printf("%s: %s\n", key, received_value);
-            if (kv_get((void *)networkContext, key1, &received_value) != 0)
-            {
-                fprintf(stderr, "Client failed to preform get\n");
-                return 1;
-            }
-            printf("%s: %s\n", key1, received_value);
-            if (kv_get((void *)networkContext, key2, &received_value) != 0)
-            {
-                fprintf(stderr, "Client failed to preform get\n");
-                return 1;
-            }
-            printf("%s: %s\n", key2, received_value);
+
+//            if (kv_get((void *)networkContext, key1, &received_value) != 0)
+//            {
+//                fprintf(stderr, "Client failed to preform get\n");
+//                return 1;
+//            }
+//            printf("%s: %s\n", key1, received_value);
+//            if (kv_get((void *)networkContext, key2, &received_value) != 0)
+//            {
+//                fprintf(stderr, "Client failed to preform get\n");
+//                return 1;
+//            }
+//            printf("%s: %s\n", key2, received_value);
 
             kv_release(received_value);
         }

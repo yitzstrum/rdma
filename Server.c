@@ -187,8 +187,13 @@ int process(KvHandle *kv_handle){
 
     if(check_who_send(&wc)){return 0;}
 
-    MessageData messageData;
-    char* data = get_job(kv_handle, &messageData, &wc);
+    MessageData* messageData = malloc(sizeof(MessageData));
+    char* data = get_job(kv_handle, messageData, &wc);
+
+    printf("Protocol: %u\n", messageData->Protocol);
+    printf("operationType: %u\n", messageData->operationType);
+    printf("keySize: %zu\n", messageData->keySize);
+    printf("valueSize: %zu\n", messageData->valueSize);
 
 //    printf("protocol: %d \n",messageDataServer.Protocol);
 //    printf("op: %d \n",messageDataServer.operationType);
