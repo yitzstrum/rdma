@@ -260,12 +260,12 @@ int process(KvHandle *kv_handle){
 
     if(check_who_send(&wc)){return 0;}
 
-    int client_id = get_client_id(kv_handle, wc);
+    int client_id = get_client_id(kv_handle, &wc);
 
-    if (wc->opcode == IBV_WC_RDMA_READ)
+    if (wc.opcode == IBV_WC_RDMA_READ)
     {
         printf("-------------rdma_read_returned-------------\n");
-        return rdma_read_returned(kv_handle, wc->wr_id, client_id);
+        return rdma_read_returned(kv_handle, wc.wr_id, client_id);
     }
 
     MessageData* messageData = malloc(sizeof(MessageData));
