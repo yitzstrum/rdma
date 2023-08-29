@@ -767,7 +767,7 @@ int pp_post_rdma(struct pingpong_context* ctx, MessageData* messageData, enum ib
             .num_sge     = 1,
             .opcode      = opcode,
             .send_flags  = IBV_SEND_SIGNALED,
-            .wr.rdma.remote_addr = messageData->value_address,
+            .wr.rdma.remote_addr = (uintptr_t)messageData->value_address,
             .wr.rdma.rkey        = messageData->rkey,
             .next        = NULL
     };

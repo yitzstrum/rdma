@@ -138,13 +138,13 @@ int main(int argc, char *argv[])
 //                return 1;
 //            }
 
-            char *received_value = NULL;
-            if (kv_get((void *)networkContext, key, &received_value) != 0)
-            {
-                fprintf(stderr, "Client failed to preform get\n");
-                return 1;
-            }
-            printf("%s: %s\n", key, received_value);
+//            char *received_value = NULL;
+//            if (kv_get((void *)networkContext, key, &received_value) != 0)
+//            {
+//                fprintf(stderr, "Client failed to preform get\n");
+//                return 1;
+//            }
+//            printf("%s: %s\n", key, received_value);
 
 //            if (kv_get((void *)networkContext, key1, &received_value) != 0)
 //            {
