@@ -35,15 +35,8 @@ enum Wr_Id {
     CLIENT_RECEIVE,
     RDMA
 };
-typedef struct MessageDataRend
-{
-    enum Protocol Protocol;
-    enum OperationType operationType;
-    size_t keySize;
-    size_t valueSize;
 
-} MessageDataRend;
-
+// We use this struct when the client sends a message to the server
 typedef struct MessageData
 {
     enum Protocol Protocol;
@@ -52,6 +45,7 @@ typedef struct MessageData
     size_t valueSize;
 } MessageData;
 
+// This struct is set when the server receive a message to its receive queue
 typedef struct MessageDataGetServer
 {
     enum Protocol Protocol;
@@ -62,15 +56,6 @@ typedef struct MessageDataGetServer
     int wr_id;
 } MessageDataGetServer;
 
-typedef struct MessageDataGetServerRend
-{
-    enum Protocol Protocol;
-    enum OperationType operationType;
-    size_t keySize;
-    size_t valueSize;
-    int client_id;
-    int wr_id;
-} MessageDataGetServerRend;
 typedef struct Resource
 {
     void* buf;
@@ -156,7 +141,7 @@ size_t parse_header(const void* buf, enum Protocol* protocol, enum OperationType
 
 //set and get
 char* add_message_data_to_buf(char* buf_pointer, size_t keySize, size_t valueSize, enum OperationType operation,enum Protocol protocol);
-char* get_wr_details_server(char* buffer, MessageDataGetServer* messageDataGetServer);
+char* get_message_data(char* buffer, MessageDataGetServer* messageDataGetServer);
 char* get_wr_details_client(KvHandle *kv_handle, MessageData* messageData);
 int pp_post_send_and_wait(KvHandle *kv_handle, struct pingpong_context* ctx, struct ibv_wc* wc, int iters);
 

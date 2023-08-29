@@ -73,30 +73,40 @@ int eager_get(MessageData* messageData, char* data, char** value)
 //    printf("Value: %s\n", *value);
     return 0;
 }
-int init_value_buf_set_rend(KvHandle* kv_handle,Resource* resources,const char* value){
-    resources->buf_for_rdma_set_client= malloc(strlen(value)+1);
-    strcpy(resources->buf_for_rdma_set_client,value);
-    resources->mr_for_rdma_set_client= init_mr(kv_handle->ctx->pd, resources->buf_for_rdma_set_client, MAX_BUF_SIZE, IBV_ACCESS_REMOTE_READ);
-    if(!resources->mr_for_rdma_set_client ||  resources->buf_for_rdma_set_client==NULL){return 1;}
+
+// This function creates a buffer and mr for the value
+int init_value(KvHandle* kv_handle, Resource* resources, const char* value){
+    size_t valSize = strlen(value) + 1;
+    resources->buf_for_rdma_set_client = malloc(valSize);
+    strcpy(resources->buf_for_rdma_set_client, value);
+    resources->mr_for_rdma_set_client = init_mr(kv_handle->ctx->pd, resources->buf_for_rdma_set_client, valSize, IBV_ACCESS_REMOTE_READ);
+
+    if(!resources->mr_for_rdma_set_client ||  resources->buf_for_rdma_set_client==NULL)
+    {
+        return 1;
+    }
     return 0;
 }
+
 int rendezvous_set(KvHandle* kv_handle, const char* key, const char* value, size_t keySize, size_t valueSize)
 {
-    if (init_value_buf_set_rend(kv_handle,&kv_handle->ctx->resources[kv_handle->ctx->count_send],value)){
+    if (init_value(kv_handle, &kv_handle->ctx->resources[kv_handle->ctx->count_send], value)){
         return 1;
     }
 
-    init_resource(&kv_handle->ctx->resources[kv_handle->ctx->count_send],kv_handle->ctx->pd,MAX_BUF_SIZE,IBV_ACCESS_LOCAL_WRITE);
+    init_resource(&kv_handle->ctx->resources[kv_handle->ctx->count_send], kv_handle->ctx->pd, MAX_BUF_SIZE, IBV_ACCESS_LOCAL_WRITE);
     char* buf_pointer = kv_handle->ctx->resources[kv_handle->ctx->count_send].buf;
     buf_pointer = add_message_data_to_buf(buf_pointer, keySize, valueSize, SET,RENDEZVOUS);
     strcpy(buf_pointer, key);
-    buf_pointer += sizeof(key);
+    buf_pointer += keySize;
 
-    void* value_addres = kv_handle->ctx->resources[kv_handle->ctx->count_send].buf_for_rdma_set_client;
-
-    memcpy(buf_pointer , value_addres, sizeof(value_addres));
-    memcpy(buf_pointer + sizeof(value_addres), &kv_handle->ctx->resources[kv_handle->ctx->count_send].mr_for_rdma_set_client->rkey, sizeof(kv_handle->ctx->resources[kv_handle->ctx->count_send].mr_for_rdma_set_client->rkey));
-
+    void* value_address = kv_handle->ctx->resources[kv_handle->ctx->count_send].buf_for_rdma_set_client;
+    printf("Value Address - P: %p\n", value_address);
+    printf("Value Address - S: %s\n", value_address);
+    memcpy(buf_pointer , value_address, sizeof(value_address));
+    uint32_t rkey = kv_handle->ctx->resources[kv_handle->ctx->count_send].mr_for_rdma_set_client->rkey;
+    memcpy(buf_pointer + sizeof(value_address), &rkey, sizeof(rkey));
+    printf("rkey: %u\n", rkey);
     if(pp_post_send_set_client(kv_handle->ctx)){
         printf("error send\n");
         return 1;
@@ -146,6 +156,7 @@ int kv_set(void* obj, const char *key, const char *value)
     {
         return eager_set(kv_handle, key, value, key_size, value_size);
     }
+
     return rendezvous_set(kv_handle, key, value, key_size, value_size);
 }
 

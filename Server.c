@@ -84,9 +84,9 @@ void get_wr_id(MessageDataGetServer* messageDataGetServer,struct ibv_wc* wc){
 
 char* get_job(KvHandle *kv_handle, MessageDataGetServer* messageDataGetServer, struct ibv_wc* wc){
     printf("-------------get_job_func-------------\n");
-    get_id_client(kv_handle,messageDataGetServer, wc);
+    get_id_client(kv_handle, messageDataGetServer, wc);
     get_wr_id(messageDataGetServer, wc);
-    return get_wr_details_server(
+    return get_message_data(
             kv_handle->clients_ctx[messageDataGetServer->client_id]->resources[messageDataGetServer->wr_id].buf,
             messageDataGetServer);
 }
@@ -130,6 +130,14 @@ int eager_get_server(KvHandle *kv_handle, MessageDataGetServer* messageDataGetSe
 }
 
 int rendezvous_set_server(KvHandle *kv_handle, MessageDataGetServer* messageDataGetServer, char* data){
+    void* value_address = malloc(sizeof(void*));
+    memcpy(value_address, data, sizeof(void*));
+    data += sizeof(void*);
+    uint32_t* rkey = malloc(sizeof(uint32_t));
+    memcpy(rkey, data, sizeof(uint32_t));
+    printf("Value Address - P: %p\n", value_address);
+    printf("Value Address - S: %s\n", value_address);
+    printf("rkey: %u\n", rkey);
     return 0;
 }
 
@@ -137,12 +145,12 @@ int rendezvous_set_server(KvHandle *kv_handle, MessageDataGetServer* messageData
 //    return 0;
 //}
 
-int kv_set_server(KvHandle *kv_handle,MessageDataGetServer* messageDataGetServer,char* data){
+int kv_set_server(KvHandle *kv_handle, MessageDataGetServer* messageDataGetServer, char* data){
     switch (messageDataGetServer->Protocol) {
         case EAGER:
-            return eager_set_server(kv_handle,messageDataGetServer,data);
+            return eager_set_server(kv_handle,messageDataGetServer, data);
         case RENDEZVOUS:
-            return rendezvous_set_server(kv_handle,messageDataGetServer,data);
+            return rendezvous_set_server(kv_handle,messageDataGetServer, data);
     }
 
     return 1;

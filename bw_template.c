@@ -522,8 +522,8 @@ char* add_message_data_to_buf(char* buf_pointer, size_t keySize, size_t valueSiz
     return buf_pointer + sizeof(MessageData);
 }
 
-char* get_wr_details_server(char* buffer, MessageDataGetServer* messageDataGetServer){
-    printf("-------------get_wr_details_server-------------start-------------\n");
+char* get_message_data(char* buffer, MessageDataGetServer* messageDataGetServer){
+    printf("-------------get_message_data-------------start-------------\n");
     memcpy(&messageDataGetServer->Protocol, buffer, sizeof(messageDataGetServer->Protocol));
     buffer += sizeof(messageDataGetServer->Protocol);
     printf("Protocol: %u\n", messageDataGetServer->Protocol);
@@ -538,7 +538,7 @@ char* get_wr_details_server(char* buffer, MessageDataGetServer* messageDataGetSe
 
     memcpy(&messageDataGetServer->valueSize, buffer, sizeof(messageDataGetServer->valueSize));
     printf("valueSize: %zu\n", messageDataGetServer->valueSize);
-    printf("-------------get_wr_details_server-------------end-------------\n");
+    printf("-------------get_message_data-------------end-------------\n");
     return buffer + sizeof(messageDataGetServer->valueSize);
 }
 
