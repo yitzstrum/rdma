@@ -36,6 +36,8 @@ enum Wr_Id {
     RDMA
 };
 
+// ----------------------------------------------- Message Data structs -----------------------------------------------
+
 // We use this struct when the client sends a message to the server
 typedef struct MessageData
 {
@@ -43,18 +45,26 @@ typedef struct MessageData
     enum OperationType operationType;
     size_t keySize;
     size_t valueSize;
+    int client_id;
+    int wr_id;
+
 } MessageData;
 
-// This struct is set when the server receive a message to its receive queue
-typedef struct MessageDataGetServer
+typedef struct MessageDataRdma
 {
     enum Protocol Protocol;
     enum OperationType operationType;
     size_t keySize;
     size_t valueSize;
+    void* value_address;
+    uint32_t rkey;
     int client_id;
     int wr_id;
-} MessageDataGetServer;
+
+} MessageDataRdma;
+
+// -------------------------------------------------------------------------------------------------------------------
+
 
 typedef struct Resource
 {
@@ -140,8 +150,9 @@ size_t parse_header(const void* buf, enum Protocol* protocol, enum OperationType
 
 
 //set and get
-char* add_message_data_to_buf(char* buf_pointer, size_t keySize, size_t valueSize, enum OperationType operation,enum Protocol protocol);
-char* get_message_data(char* buffer, MessageDataGetServer* messageDataGetServer);
+char* copy_message_data_to_buf(char* buf_pointer, size_t keySize, size_t valueSize, enum OperationType operation, enum Protocol protocol);
+char* copy_message_data_rdma_to_buf(char* buf_pointer, size_t keySize, size_t valueSize, enum OperationType operation, enum Protocol protocol, void* value_address, uint32_t rkey);
+char* get_message_data(char* buffer, MessageData* messageData);
 char* get_wr_details_client(KvHandle *kv_handle, MessageData* messageData);
 int pp_post_send_and_wait(KvHandle *kv_handle, struct pingpong_context* ctx, struct ibv_wc* wc, int iters);
 

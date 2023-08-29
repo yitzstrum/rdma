@@ -69,31 +69,41 @@ int check_who_send(struct ibv_wc* wc){
 
 
 
-void get_id_client(KvHandle *kv_handle,MessageDataGetServer* messageDataGetServer,struct ibv_wc* wc){
+void get_id_client(KvHandle *kv_handle, MessageData* messageData, struct ibv_wc* wc){
     for(int client=0; client<NUM_OF_CLIENTS; client++){
         if (wc->qp_num == kv_handle->clients_ctx[client]->qp->qp_num){
-            messageDataGetServer->client_id = client;
+            messageData->client_id = client;
             break;
         }
     }
 }
 
-void get_wr_id(MessageDataGetServer* messageDataGetServer,struct ibv_wc* wc){
-    messageDataGetServer->wr_id = wc->wr_id;
+void get_wr_id(MessageData* messageData, struct ibv_wc* wc){
+    messageData->wr_id = wc->wr_id;
 }
 
-char* get_job(KvHandle *kv_handle, MessageDataGetServer* messageDataGetServer, struct ibv_wc* wc){
+char* get_job(KvHandle *kv_handle, MessageData* messageData, struct ibv_wc* wc){
     printf("-------------get_job_func-------------\n");
-    get_id_client(kv_handle, messageDataGetServer, wc);
-    get_wr_id(messageDataGetServer, wc);
-    return get_message_data(
-            kv_handle->clients_ctx[messageDataGetServer->client_id]->resources[messageDataGetServer->wr_id].buf,
-            messageDataGetServer);
+    void* newBuff = malloc(sizeof(MessageData));
+    char* buffer = kv_handle->clients_ctx[messageData->client_id]->resources[messageData->wr_id].buf;
+    memcpy(newBuff, buffer, sizeof(MessageData));
+    messageData = (MessageData*) newBuff;
+    get_id_client(kv_handle, messageData, wc);
+    get_wr_id(messageData, wc);
+
+    printf("Protocol: %u\n", messageData->Protocol);
+    printf("operationType: %u\n", messageData->operationType);
+    printf("keySize: %zu\n", messageData->keySize);
+    printf("valueSize: %zu\n", messageData->valueSize);
+
+    printf("-------------get_job-------------end-------------\n");
+
+    return buffer + sizeof(MessageData);
 }
 
-int eager_set_server(KvHandle *kv_handle, MessageDataGetServer* messageDataGetServer, char* data){
-    char* key = malloc(messageDataGetServer->keySize);
-    char *value = malloc(messageDataGetServer->valueSize);
+int eager_set_server(KvHandle *kv_handle, MessageData* messageData, char* data){
+    char* key = malloc(messageData->keySize);
+    char *value = malloc(messageData->valueSize);
 
     strcpy(key, data);
     data += sizeof(key);
@@ -109,19 +119,19 @@ int eager_set_server(KvHandle *kv_handle, MessageDataGetServer* messageDataGetSe
     return 0;
 }
 
-int eager_get_server(KvHandle *kv_handle, MessageDataGetServer* messageDataGetServer, char* data){
+int eager_get_server(KvHandle *kv_handle, MessageData* messageData, char* data){
     printf("-------------eager_get_server-------------\n");
-    char* key = malloc(messageDataGetServer->keySize);
-    memcpy(key, data, messageDataGetServer->keySize);
+    char* key = malloc(messageData->keySize);
+    memcpy(key, data, messageData->keySize);
     printf("The key is: %s\n", key);
     char* value = NULL;
     hashTable_get(key, &value,kv_handle->hashTable);
-    char* bufferPointer = kv_handle->clients_ctx[messageDataGetServer->client_id]->buf;
+    char* bufferPointer = kv_handle->clients_ctx[messageData->client_id]->buf;
     printf("The size of the value is: %lu\n", strlen(value));
     printf("The value is: %s\n", value);
-    bufferPointer = add_message_data_to_buf(bufferPointer, 0, strlen(value) + 1, GET, EAGER);
+    bufferPointer = copy_message_data_to_buf(bufferPointer, 0, strlen(value) + 1, GET, EAGER);
     strcpy(bufferPointer, value);
-    if (pp_post_send_and_wait(kv_handle, kv_handle->clients_ctx[messageDataGetServer->client_id], NULL, 1))
+    if (pp_post_send_and_wait(kv_handle, kv_handle->clients_ctx[messageData->client_id], NULL, 1))
     {
         perror("Server failed to send the value");
         return 1;
@@ -129,7 +139,7 @@ int eager_get_server(KvHandle *kv_handle, MessageDataGetServer* messageDataGetSe
     return 0;
 }
 
-int rendezvous_set_server(KvHandle *kv_handle, MessageDataGetServer* messageDataGetServer, char* data){
+int rendezvous_set_server(KvHandle *kv_handle, MessageData* messageData, char* data){
     void* value_address = malloc(sizeof(void*));
     memcpy(value_address, data, sizeof(void*));
     data += sizeof(void*);
@@ -145,23 +155,23 @@ int rendezvous_set_server(KvHandle *kv_handle, MessageDataGetServer* messageData
 //    return 0;
 //}
 
-int kv_set_server(KvHandle *kv_handle, MessageDataGetServer* messageDataGetServer, char* data){
-    switch (messageDataGetServer->Protocol) {
+int kv_set_server(KvHandle *kv_handle, MessageData* messageData, char* data){
+    switch (messageData->Protocol) {
         case EAGER:
-            return eager_set_server(kv_handle,messageDataGetServer, data);
+            return eager_set_server(kv_handle, messageData, data);
         case RENDEZVOUS:
-            return rendezvous_set_server(kv_handle,messageDataGetServer, data);
+            return rendezvous_set_server(kv_handle,messageData, data);
     }
 
     return 1;
 }
 
 
-int kv_get_server(KvHandle *kv_handle, MessageDataGetServer* messageDataGetServer, char* data){
+int kv_get_server(KvHandle *kv_handle, MessageData* messageData, char* data){
     printf("-------------kv_get_server-------------start-------------\n");
-    switch (messageDataGetServer->Protocol) {
+    switch (messageData->Protocol) {
         case EAGER:
-            return eager_get_server(kv_handle, messageDataGetServer, data);
+            return eager_get_server(kv_handle, messageData, data);
         case RENDEZVOUS:
             break;
     }
@@ -177,19 +187,20 @@ int process(KvHandle *kv_handle){
 
     if(check_who_send(&wc)){return 0;}
 
-    MessageDataGetServer messageDataGetServer;
-    char* data = get_job(kv_handle, &messageDataGetServer, &wc);
-//    printf("protocol: %d \n",messageDataGetServer.Protocol);
-//    printf("op: %d \n",messageDataGetServer.operationType);
-//    printf("key_size: %zu \n",messageDataGetServer.keySize);
+    MessageData messageData;
+    char* data = get_job(kv_handle, &messageData, &wc);
+
+//    printf("protocol: %d \n",messageDataServer.Protocol);
+//    printf("op: %d \n",messageDataServer.operationType);
+//    printf("key_size: %zu \n",messageDataServer.keySize);
 //    printf("data: %s \n",data);
 //    printf("data: %s \n",data);
-    switch (messageDataGetServer.operationType) {
+    switch (messageData.operationType) {
         case SET:
-            kv_set_server(kv_handle, &messageDataGetServer, data);
+            kv_set_server(kv_handle, &messageData, data);
             break;
         case GET:
-            kv_get_server(kv_handle, &messageDataGetServer, data);
+            kv_get_server(kv_handle, &messageData, data);
             break;
         default:
             return 1;

@@ -510,7 +510,7 @@ int pp_post_send(struct pingpong_context *ctx)
     return ibv_post_send(ctx->qp, &wr, &bad_wr);
 }
 
-char* add_message_data_to_buf(char* buf_pointer, size_t keySize, size_t valueSize, enum OperationType operation, enum Protocol protocol)
+char* copy_message_data_to_buf(char* buf_pointer, size_t keySize, size_t valueSize, enum OperationType operation, enum Protocol protocol)
 {
     MessageData messageData;
     memset(&messageData, 0, sizeof(MessageData));
@@ -522,24 +522,43 @@ char* add_message_data_to_buf(char* buf_pointer, size_t keySize, size_t valueSiz
     return buf_pointer + sizeof(MessageData);
 }
 
-char* get_message_data(char* buffer, MessageDataGetServer* messageDataGetServer){
+char* copy_message_data_rdma_to_buf(char* buf_pointer, size_t keySize, size_t valueSize, enum OperationType operation, enum Protocol protocol, void* value_address, uint32_t rkey)
+{
+    MessageDataRdma messageDataRdma;
+    memset(&messageDataRdma, 0, sizeof(MessageDataRdma));
+    messageDataRdma.operationType = operation;
+    messageDataRdma.Protocol = protocol;
+    messageDataRdma.keySize = keySize;
+    messageDataRdma.valueSize = valueSize;
+    messageDataRdma.value_address = value_address;
+    messageDataRdma.rkey = rkey;
+    memcpy(buf_pointer, &messageDataRdma, sizeof(MessageDataRdma));
+    return buf_pointer + sizeof(MessageDataRdma);
+}
+
+char* get_message_data(char* buffer, MessageData* messageData){
     printf("-------------get_message_data-------------start-------------\n");
-    memcpy(&messageDataGetServer->Protocol, buffer, sizeof(messageDataGetServer->Protocol));
-    buffer += sizeof(messageDataGetServer->Protocol);
-    printf("Protocol: %u\n", messageDataGetServer->Protocol);
 
-    memcpy(&messageDataGetServer->operationType, buffer, sizeof(messageDataGetServer->operationType));
-    buffer += sizeof(messageDataGetServer->operationType);
-    printf("operationType: %u\n", messageDataGetServer->operationType);
+    void* newBuff = malloc(sizeof(MessageData));
+    memcpy(newBuff, buffer, sizeof(MessageData));
+    messageData = (MessageData*) newBuff;
 
-    memcpy(&messageDataGetServer->keySize, buffer, sizeof(messageDataGetServer->keySize));
-    buffer += sizeof(messageDataGetServer->keySize);
-    printf("keySize: %zu\n", messageDataGetServer->keySize);
+    memcpy(&messageData->Protocol, buffer, sizeof(messageData->Protocol));
+    buffer += sizeof(messageData->Protocol);
+    printf("Protocol: %u\n", messageData->Protocol);
 
-    memcpy(&messageDataGetServer->valueSize, buffer, sizeof(messageDataGetServer->valueSize));
-    printf("valueSize: %zu\n", messageDataGetServer->valueSize);
+    memcpy(&messageData->operationType, buffer, sizeof(messageData->operationType));
+    buffer += sizeof(messageData->operationType);
+    printf("operationType: %u\n", messageData->operationType);
+
+    memcpy(&messageData->keySize, buffer, sizeof(messageData->keySize));
+    buffer += sizeof(messageData->keySize);
+    printf("keySize: %zu\n", messageData->keySize);
+
+    memcpy(&messageData->valueSize, buffer, sizeof(messageData->valueSize));
+    printf("valueSize: %zu\n", messageData->valueSize);
     printf("-------------get_message_data-------------end-------------\n");
-    return buffer + sizeof(messageDataGetServer->valueSize);
+    return buffer + sizeof(messageData->valueSize);
 }
 
 char* get_wr_details_client(KvHandle *kv_handle, MessageData* messageData){

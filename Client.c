@@ -50,7 +50,7 @@ int eager_set(KvHandle* kv_handle, const char* key, const char* value, size_t ke
 {
     init_resource(&kv_handle->ctx->resources[kv_handle->ctx->count_send], kv_handle->ctx->pd, MAX_BUF_SIZE, IBV_ACCESS_LOCAL_WRITE);
     char* buf_pointer = kv_handle->ctx->resources[kv_handle->ctx->count_send].buf;
-    buf_pointer = add_message_data_to_buf(buf_pointer, keySize, valueSize, SET,EAGER);
+    buf_pointer = copy_message_data_to_buf(buf_pointer, keySize, valueSize, SET, EAGER);
 
     strcpy(buf_pointer, key);
     buf_pointer += sizeof(key);
@@ -96,17 +96,18 @@ int rendezvous_set(KvHandle* kv_handle, const char* key, const char* value, size
 
     init_resource(&kv_handle->ctx->resources[kv_handle->ctx->count_send], kv_handle->ctx->pd, MAX_BUF_SIZE, IBV_ACCESS_LOCAL_WRITE);
     char* buf_pointer = kv_handle->ctx->resources[kv_handle->ctx->count_send].buf;
-    buf_pointer = add_message_data_to_buf(buf_pointer, keySize, valueSize, SET,RENDEZVOUS);
+    uint32_t rkey = kv_handle->ctx->resources[kv_handle->ctx->count_send].mr_for_rdma_set_client->rkey;
+    void* value_address = kv_handle->ctx->resources[kv_handle->ctx->count_send].buf_for_rdma_set_client;
+
+    buf_pointer = copy_message_data_rdma_to_buf(buf_pointer, keySize, valueSize, SET, RENDEZVOUS, value_address, rkey);
+
+    printf("Value Address - P: %p\n", value_address);
+    printf("Value Address - S: %s\n", value_address);
+    printf("rkey: %u\n", rkey);
+
     strcpy(buf_pointer, key);
     buf_pointer += keySize;
 
-    void* value_address = kv_handle->ctx->resources[kv_handle->ctx->count_send].buf_for_rdma_set_client;
-    printf("Value Address - P: %p\n", value_address);
-    printf("Value Address - S: %s\n", value_address);
-    memcpy(buf_pointer , value_address, sizeof(value_address));
-    uint32_t rkey = kv_handle->ctx->resources[kv_handle->ctx->count_send].mr_for_rdma_set_client->rkey;
-    memcpy(buf_pointer + sizeof(value_address), &rkey, sizeof(rkey));
-    printf("rkey: %u\n", rkey);
     if(pp_post_send_set_client(kv_handle->ctx)){
         printf("error send\n");
         return 1;
@@ -152,10 +153,10 @@ int kv_set(void* obj, const char *key, const char *value)
 
     struct ibv_wc wc;
     empty_cq(kv_handle, &wc, I_SEND_SET);
-//    if (key_size + value_size < MAX_EAGER_SIZE)
-//    {
-//        return eager_set(kv_handle, key, value, key_size, value_size);
-//    }
+    if (key_size + value_size < MAX_EAGER_SIZE)
+    {
+        return eager_set(kv_handle, key, value, key_size, value_size);
+    }
 
     return rendezvous_set(kv_handle, key, value, key_size, value_size);
 }
@@ -166,7 +167,7 @@ int kv_get(void *obj, const char *key, char **value)
     size_t keySize = strlen(key) + 1;
     KvHandle* kv_handle = (KvHandle *) obj;
     char* buf_pointer = kv_handle->ctx->buf;
-    buf_pointer = add_message_data_to_buf(buf_pointer, keySize, 0, GET, EAGER);
+    buf_pointer = copy_message_data_to_buf(buf_pointer, keySize, 0, GET, EAGER);
     strcpy(buf_pointer, key);
 
     if (pp_post_send_get_client(kv_handle->ctx)){
