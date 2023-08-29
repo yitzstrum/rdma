@@ -518,6 +518,8 @@ char* copy_message_data_to_buf(char* buf_pointer, size_t keySize, size_t valueSi
     messageData.Protocol = protocol;
     messageData.keySize = keySize;
     messageData.valueSize = valueSize;
+    messageData.wr_id = 0;
+    messageData.client_id = 0;
     memcpy(buf_pointer, &messageData, sizeof(MessageData));
     return buf_pointer + sizeof(MessageData);
 }
