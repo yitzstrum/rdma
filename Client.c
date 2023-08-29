@@ -73,19 +73,30 @@ int eager_get(MessageData* messageData, char* data, char** value)
 //    printf("Value: %s\n", *value);
     return 0;
 }
-
+int init_value_buf_set_rend(KvHandle* kv_handle,Resource* resources,const char* value){
+    resources->buf_for_rdma_set_client= malloc(strlen(value)+1);
+    strcpy(resources->buf_for_rdma_set_client,value);
+    resources->mr_for_rdma_set_client= init_mr(kv_handle->ctx->pd, resources->buf_for_rdma_set_client, MAX_BUF_SIZE, IBV_ACCESS_REMOTE_READ);
+    if(!resources->mr_for_rdma_set_client ||  resources->buf_for_rdma_set_client==NULL){return 1;}
+    return 0;
+}
 int rendezvous_set(KvHandle* kv_handle, const char* key, const char* value, size_t keySize, size_t valueSize)
 {
-    init_resource(&kv_handle->ctx->resources[kv_handle->ctx->count_send],kv_handle->ctx->pd,MAX_BUF_SIZE,IBV_ACCESS_REMOTE_READ);
+    if (init_value_buf_set_rend(kv_handle,&kv_handle->ctx->resources[kv_handle->ctx->count_send],value)){
+        return 1;
+    }
+
+    init_resource(&kv_handle->ctx->resources[kv_handle->ctx->count_send],kv_handle->ctx->pd,MAX_BUF_SIZE,IBV_ACCESS_LOCAL_WRITE);
     char* buf_pointer = kv_handle->ctx->resources[kv_handle->ctx->count_send].buf;
     buf_pointer = add_message_data_to_buf(buf_pointer, keySize, valueSize, SET,RENDEZVOUS);
     strcpy(buf_pointer, key);
     buf_pointer += sizeof(key);
 
-    void* value_data = buf_pointer;
-    *(void **)value_data = value;
-    memcpy(value_data + sizeof(value), &kv_handle->ctx->resources[kv_handle->ctx->count_send].mr->rkey, sizeof(kv_handle->ctx->resources[kv_handle->ctx->count_send].mr->rkey));
-//    strcpy(buf_pointer, value);
+    void* value_addres = kv_handle->ctx->resources[kv_handle->ctx->count_send].buf_for_rdma_set_client;
+
+    memcpy(buf_pointer , value_addres, sizeof(value_addres));
+    memcpy(buf_pointer + sizeof(value_addres), &kv_handle->ctx->resources[kv_handle->ctx->count_send].mr_for_rdma_set_client->rkey, sizeof(kv_handle->ctx->resources[kv_handle->ctx->count_send].mr_for_rdma_set_client->rkey));
+
     if(pp_post_send_set_client(kv_handle->ctx)){
         printf("error send\n");
         return 1;
