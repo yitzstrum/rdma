@@ -106,7 +106,7 @@ int hashTable_set(const char* key, char* value, HashTable* table) {
 
 KeyValuePair* hashTable_get_entry(const char* key, HashTable* table)
 {
-    printf("------------hashTable_get_entry------------\n");
+//    printf("------------hashTable_get_entry------------\n");
     unsigned int index = hash(key);
 
     KeyValuePair* entry = table->entries[index];
@@ -121,21 +121,21 @@ KeyValuePair* hashTable_get_entry(const char* key, HashTable* table)
 }
 
 void hashTable_get(const char* key, char** value, HashTable* table) {
-    printf("------------hashTable_get------------\n");
+//    printf("------------hashTable_get------------\n");
     KeyValuePair* entry = hashTable_get_entry(key, table);
     *value = entry != NULL ? entry->value : "";
-    printf("hashtable val: %s\n", *value);
+//    printf("hashtable val: %s\n", *value);
 }
 
 int hashTable_set_lock(const char* key, HashTable* table)
 {
-    printf("----------hashTable_set_lock----------\n");
+//    printf("----------hashTable_set_lock----------\n");
     KeyValuePair* entry = hashTable_get_entry(key, table);
     if (entry == NULL)
     {
         return 1;
     }
-    printf("entry->val: %s\n", entry->value);
+//    printf("entry->val: %s\n", entry->value);
     entry->sem_lock ++;
     return 0;
 }
