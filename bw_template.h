@@ -49,7 +49,7 @@ typedef struct MessageData
     int wr_id;
     void* value_address;
     uint32_t rkey;
-
+    int fin;
 } MessageData;
 
 // -------------------------------------------------------------------------------------------------------------------
@@ -131,17 +131,17 @@ void gid_to_wire_gid(const union ibv_gid *gid, char wgid[]);
 
 //set and get - helper function
 int add_work_recv(struct pingpong_context* ctx);
-int empty_cq(KvHandle* pHandler, struct ibv_wc *wc, int stopCondition);
-int pull_cq(KvHandle * pHandler, struct ibv_wc *wc, int iters);
+int empty_cq(KvHandle* kv_handle, struct ibv_wc *wc, int stopCondition);
+int pull_cq(KvHandle * kv_handle, struct ibv_wc *wc, int iters);
 int pp_post_send(struct pingpong_context *ctx);
 size_t parse_header(const void* buf, enum Protocol* protocol, enum OperationType* operation, size_t* key_size, size_t* val_size);
 
 
 //set and get
-char* copy_message_data_to_buf(char* buf_pointer, size_t keySize, size_t valueSize, enum OperationType operation, enum Protocol protocol, void* value_address, uint32_t rkey);
+char* copy_message_data_to_buf(char* buf_pointer, size_t keySize, size_t valueSize, enum OperationType operation, enum Protocol protocol, void* value_address, uint32_t rkey, int wr_id);
 char* get_message_data(char* buffer, MessageData* messageData);
 char* get_wr_details_client(KvHandle *kv_handle, MessageData* messageData);
-int pp_post_send_and_wait(KvHandle *kv_handle, struct pingpong_context* ctx, struct ibv_wc* wc, int iters);
+int pp_post_send_server(KvHandle *kv_handle, struct pingpong_context* ctx, struct ibv_wc* wc, int iters);
 
 //server function
 
@@ -152,7 +152,7 @@ struct pingpong_dest *pp_server_exch_dest(struct ibv_qp* qp, const struct pingpo
 int get_client_identifier(KvHandle * pHandler, uint32_t src_qp);
 
 int pp_post_recv(struct pingpong_context *ctx, int resource_idx);
-int pp_post_rdma(struct pingpong_context* ctx, MessageData* messageData, enum ibv_wr_opcode opcode);
+int pp_post_rdma(struct pingpong_context* ctx, MessageData* messageData, enum ibv_wr_opcode opcode,uintptr_t buffer_address);
 int init_resource(Resource* resource, struct ibv_pd* pd, size_t size,enum ibv_access_flags access);
 #endif /* BW_TEMPLATE_H */
 
