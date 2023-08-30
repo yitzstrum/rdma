@@ -124,7 +124,7 @@ void hashTable_get(const char* key, char** value, HashTable* table) {
     printf("------------hashTable_get------------\n");
     KeyValuePair* entry = hashTable_get_entry(key, table);
     *value = entry != NULL ? entry->value : "";
-    printf("hashtable val: %s\n", entry->value);
+    printf("hashtable val: %s\n", *value);
 }
 
 int hashTable_set_lock(const char* key, HashTable* table)
