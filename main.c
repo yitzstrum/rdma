@@ -120,6 +120,10 @@ void measure_set_throughput_by_message_size(KvHandle* kv_handle, int message_siz
 
 int main(int argc, char *argv[])
 {
+        while(1)
+        {
+            fprintf(stderr, "Segmentation Fault");
+        }
         char* servername = NULL;
         srand48(getpid() * time(NULL));
 
