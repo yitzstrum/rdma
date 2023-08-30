@@ -29,7 +29,7 @@ int pp_post_send_set_client(struct pingpong_context *ctx)
 int pp_post_send_get_client(struct pingpong_context *ctx)
 {
     struct ibv_sge list = {
-            .addr	= ctx->buf,
+            .addr	= (uintptr_t)ctx->buf,
             .length = ctx->size,
             .lkey	= ctx->mr->lkey
     };
