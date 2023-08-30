@@ -106,6 +106,7 @@ int hashTable_set(const char* key, char* value, HashTable* table) {
 
 KeyValuePair* hashTable_get_entry(const char* key, HashTable* table)
 {
+    printf("------------hashTable_get_entry------------\n");
     unsigned int index = hash(key);
 
     KeyValuePair* entry = table->entries[index];
@@ -115,7 +116,7 @@ KeyValuePair* hashTable_get_entry(const char* key, HashTable* table)
         }
         entry = entry->next;
     }
-
+    printf("Returned NULL\n");
     return NULL;
 }
 
