@@ -171,10 +171,10 @@ int kv_set(void* obj, const char *key, const char *value)
 
     struct ibv_wc wc;
     empty_cq(kv_handle, &wc, I_SEND_SET);
-    if (key_size + value_size < MAX_EAGER_SIZE)
-    {
-        return eager_set(kv_handle, key, value, key_size, value_size);
-    }
+//    if (key_size + value_size < MAX_EAGER_SIZE)
+//    {
+//        return eager_set(kv_handle, key, value, key_size, value_size);
+//    }
 
     return rendezvous_set(kv_handle, key, value, key_size, value_size);
 }
@@ -185,19 +185,15 @@ int kv_get(void *obj, const char *key, char **value)
     size_t keySize = strlen(key) + 1;
     KvHandle* kv_handle = (KvHandle *) obj;
     char* buf_pointer = kv_handle->ctx->buf;
-    printf("The buffers address is: %p\n", kv_handle->ctx->buf);
     buf_pointer = copy_message_data_to_buf(buf_pointer, keySize, 0, GET, EAGER,
                                            NULL, 0, 0);
     strcpy(buf_pointer, key);
-    printf("The buffers address is: %p\n", kv_handle->ctx->buf);
-
     if (pp_post_send_get_client(kv_handle->ctx)){
         perror("Client failed to post send the request");
         return 1;
     }
 
     struct ibv_wc wc;
-    printf("The buffers address is: %p\n", kv_handle->ctx->buf);
     empty_cq(kv_handle, &wc, CLIENT_RECEIVE);
     printf("-------------empty_cq_end-------------\n");
 
