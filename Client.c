@@ -185,6 +185,7 @@ int kv_get(void *obj, const char *key, char **value)
     size_t keySize = strlen(key) + 1;
     KvHandle* kv_handle = (KvHandle *) obj;
     char* buf_pointer = kv_handle->ctx->buf;
+    printf("The buffers address is: %p\n", kv_handle->ctx->buf);
     buf_pointer = copy_message_data_to_buf(buf_pointer, keySize, 0, GET, EAGER,
                                            NULL, 0, 0);
     strcpy(buf_pointer, key);
