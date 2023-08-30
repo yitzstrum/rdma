@@ -236,8 +236,6 @@ int rendezvous_set_server(KvHandle *kv_handle, MessageData* messageData, char* d
 
     memcpy(kv_handle->clients_ctx[messageData->client_id]->resources[messageData->wr_id].key_buffer,
            data, messageData->keySize);
-    printf("-------------pp_post_rdma-------------\n");
-    printf("The value address is: %p\n", messageData->value_address);
     uintptr_t buffer_address = (uintptr_t)kv_handle->clients_ctx[messageData->client_id]->resources[messageData->wr_id].value_buffer;
     if(pp_post_rdma(kv_handle->clients_ctx[messageData->client_id], messageData, IBV_WR_RDMA_READ,
                     buffer_address))

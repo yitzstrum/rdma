@@ -767,7 +767,7 @@ int pp_post_rdma(struct pingpong_context* ctx, MessageData* messageData, enum ib
 
     struct ibv_send_wr* bad_wr;
     struct ibv_send_wr wr = {
-            .wr_id       = messageData->wr_id,
+            .wr_id       = RDMA,
             .sg_list     = &list,
             .num_sge     = 1,
             .opcode      = opcode,
