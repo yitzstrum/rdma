@@ -501,11 +501,11 @@ int empty_cq(KvHandle* kv_handle, struct ibv_wc *wc, int stopCondition)
 
         wr_id = wc->wr_id;
         // The wc is the message received from the server through the post receive queue
-//        if (wr_id < MAX_RESOURCES)
-//        {
-//            free(kv_handle->ctx->resources[wr_id].buf);
-//            ibv_dereg_mr(kv_handle->ctx->resources[wr_id].mr);
-//        }
+        if (wr_id < MAX_RESOURCES)
+        {
+            free(kv_handle->ctx->resources[wr_id].buf);
+            ibv_dereg_mr(kv_handle->ctx->resources[wr_id].mr);
+        }
 
     }
     return 0;

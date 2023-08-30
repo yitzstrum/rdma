@@ -144,6 +144,7 @@ int hashTable_release_lock(const char* key, HashTable* table)
     }
     if (--entry->sem_lock == 0 && entry->locked_value)
     {
+        printf("insert locked value into entry value\n");
         free(entry->value);
         entry->value = strdup(entry->locked_value);
         printf("C\n");
