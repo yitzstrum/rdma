@@ -11,12 +11,13 @@
 #define NUM_OF_CLIENTS (1)
 #define MAX_RESOURCES (100)
 
-
 extern const int RX_DEPTH;
 extern const int TX_DEPTH;
 extern const int SL;
 extern const enum ibv_mtu MTU;
 extern const enum ibv_mtu MTU;
+
+// ------------------------------------------------------ Enums ------------------------------------------------------
 
 enum Protocol {
     EAGER,
@@ -36,7 +37,7 @@ enum Wr_Id {
     RDMA
 };
 
-// ----------------------------------------------- Message Data Struct -----------------------------------------------
+// ------------------------------------------------------ Structs ------------------------------------------------------
 
 // We use this struct when the client sends a message to the server
 typedef struct MessageData
@@ -51,9 +52,6 @@ typedef struct MessageData
     uint32_t rkey;
     int fin;
 } MessageData;
-
-// -------------------------------------------------------------------------------------------------------------------
-
 
 typedef struct Resource
 {
@@ -103,7 +101,7 @@ typedef struct KvHandle {
     HashTable* hashTable;
 } KvHandle;
 
-//init
+//--------------------------------------------------------init--------------------------------------------------------
 int init_dev_list(KvHandle* my_kv);
 int init_context(KvHandle* my_kv);
 struct ibv_cq* init_cq(KvHandle *networkContext);
@@ -122,7 +120,7 @@ int init_client_post_recv(KvHandle* networkContext);
 int init_network_context(KvHandle* networkContext, const char* servername);
 
 
-//connect
+//------------------------------------------------------connect------------------------------------------------------
 struct pingpong_dest *pp_client_exch_dest(const char *servername, const struct pingpong_dest *my_dest);
 int pp_connect_ctx(struct ibv_qp* qp, int my_psn,struct pingpong_dest *dest, int sgid_idx);
 void wire_gid_to_gid(const char *wgid, union ibv_gid *gid);
@@ -130,17 +128,15 @@ void gid_to_wire_gid(const union ibv_gid *gid, char wgid[]);
 
 
 //set and get - helper function
-int add_work_recv(struct pingpong_context* ctx);
+int restore_post_receive_queue(struct pingpong_context* ctx);
 int empty_cq(KvHandle* kv_handle, struct ibv_wc *wc, int stopCondition);
 int pull_cq(KvHandle * kv_handle, struct ibv_wc *wc, int iters);
 int pp_post_send(struct pingpong_context *ctx);
-size_t parse_header(const void* buf, enum Protocol* protocol, enum OperationType* operation, size_t* key_size, size_t* val_size);
 
 
 //set and get
 char* copy_message_data_to_buf(char* buf_pointer, size_t keySize, size_t valueSize, enum OperationType operation, enum Protocol protocol, void* value_address, uint32_t rkey, int wr_id);
 char* get_message_data(char* buffer, MessageData* messageData);
-char* get_wr_details_client(KvHandle *kv_handle, MessageData* messageData);
 int pp_post_send_server(KvHandle *kv_handle, struct pingpong_context* ctx, struct ibv_wc* wc, int iters);
 
 //server function
@@ -154,6 +150,12 @@ int get_client_identifier(KvHandle * pHandler, uint32_t src_qp);
 int pp_post_recv(struct pingpong_context *ctx, int resource_idx);
 int pp_post_rdma(struct pingpong_context* ctx, MessageData* messageData, enum ibv_wr_opcode opcode,uintptr_t buffer_address);
 int init_resource(Resource* resource, struct ibv_pd* pd, size_t size,enum ibv_access_flags access);
+
+//----------------------------------------------------Release Funcs----------------------------------------------------
+
+int pp_close_ctx(struct pingpong_context *ctx);
+void release_kv_handler(KvHandle** kv_handle);
+
 #endif /* BW_TEMPLATE_H */
 
 

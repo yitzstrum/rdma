@@ -49,16 +49,26 @@ bool checkResize(HashTable* table) {
 
 int hashTable_set(const char* key, char* value, HashTable* table) {
     unsigned int index = hash(key);
-    // Allocate memory for key and vale;
 
     // Check if the key already exists
     KeyValuePair* entry = table->entries[index];
     while (entry != NULL) {
         if (strcmp(entry->key, key) == 0) {
             // Key already exists, update the value
-            if (!entry->is_dirty)
+            if (entry->sem_lock == 0)
+            {
                 free(entry->value);
-            entry->value = value;
+                entry->value = strdup(value);
+            }
+            else
+            {
+                if (entry->locked_value != NULL)
+                {
+                    free(entry->locked_value);
+                    entry->locked_value = NULL;
+                }
+                entry->locked_value = strdup(value);
+            }
             return 0;
         }
         entry = entry->next;
@@ -72,7 +82,8 @@ int hashTable_set(const char* key, char* value, HashTable* table) {
     }
     newEntry->key = strdup(key);
     newEntry->value = strdup(value);
-    newEntry->is_dirty = false;
+    newEntry->sem_lock = 0;
+    newEntry->locked_value = NULL;
     newEntry->next = NULL;
 
     // Insert the new entry at the beginning of the linked list
@@ -113,64 +124,36 @@ void hashTable_get(const char* key, char** value, HashTable* table) {
     *value = entry != NULL ? entry->value : "";
 }
 
-int hashTable_set_is_dirty(const char* key, HashTable* table, bool is_dirty)
+int hashTable_set_lock(const char* key, HashTable* table)
 {
     KeyValuePair* entry = hashTable_get_entry(key, table);
     if (entry == NULL)
     {
         return 1;
     }
-
-    entry->is_dirty = is_dirty;
+    entry->sem_lock ++;
     return 0;
 }
 
-int hashTable_set_dirty(const char* key, HashTable* table)
+int hashTable_release_lock(const char* key, HashTable* table)
 {
-    return hashTable_set_is_dirty(key, table, true);
-}
-
-int hashTable_unset_dirty(const char* key, HashTable* table)
-{
-    return hashTable_set_is_dirty(key, table, false);
-}
-
-int hashTable_delete(const char* key, HashTable* table) {
-    unsigned int index = hash(key);
-
-    KeyValuePair* entry = table->entries[index];
-    KeyValuePair* prevEntry = NULL;
-
-    while (entry != NULL) {
-        if (strcmp(entry->key, key) == 0) {
-            if (prevEntry == NULL) {
-                // Key is at the head of the linked list
-                table->entries[index] = entry->next;
-            } else {
-                // Key is in the middle or at the tail of the linked list
-                prevEntry->next = entry->next;
-            }
-
-            free(entry->key);
-            free(entry->value);
-            free(entry);
-            table->size--;
-            if (checkResize(table))
-            {
-                resizeHashTable(table, table->capacity * GROWTH_FACTOR);
-            }
-            return 0;
-        }
-
-        prevEntry = entry;
-        entry = entry->next;
+    KeyValuePair* entry = hashTable_get_entry(key, table);
+    if (entry == NULL)
+    {
+        return 1;
     }
-
-    return 1;
+    if (--entry->sem_lock == 0 && entry->locked_value)
+    {
+        free(entry->value);
+        entry->value = strdup(entry->locked_value);
+        printf("C\n");
+        free(entry->locked_value);
+        entry->locked_value = NULL;
+    }
+    return 0;
 }
 
-
-void hashTable_delete_cleanup(HashTable* table) {
+void release_db(HashTable* table) {
     for (size_t i = 0; i < table->capacity; i++) {
         KeyValuePair* entry = table->entries[i];
         while (entry != NULL) {
