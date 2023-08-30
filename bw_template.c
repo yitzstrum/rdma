@@ -491,6 +491,7 @@ int empty_cq(KvHandle* kv_handle, struct ibv_wc *wc, int stopCondition)
             }
         }
 
+        printf("buf addr 1 %p\n", kv_handle->ctx->buf);
 
         if (wc->status != IBV_WC_SUCCESS) {
             fprintf(stderr, "Failed status %s (%d) for wr_id %d\n",
@@ -503,8 +504,10 @@ int empty_cq(KvHandle* kv_handle, struct ibv_wc *wc, int stopCondition)
         // The wc is the message received from the server through the post receive queue
         if (wr_id < MAX_RESOURCES)
         {
+            printf("buf addr 2 %p\n", kv_handle->ctx->buf);
             free(kv_handle->ctx->resources[wr_id].buf);
             ibv_dereg_mr(kv_handle->ctx->resources[wr_id].mr);
+            printf("buf addr 3 %p\n", kv_handle->ctx->buf);
         }
 
     }
