@@ -238,7 +238,7 @@ int rendezvous_set_server(KvHandle *kv_handle, MessageData* messageData, char* d
            data, messageData->keySize);
     uintptr_t buffer_address = (uintptr_t)kv_handle->clients_ctx[messageData->client_id]->resources[messageData->wr_id].value_buffer;
     if(pp_post_rdma(kv_handle->clients_ctx[messageData->client_id], messageData, IBV_WR_RDMA_READ,
-                    buffer_address))
+                    buffer_address, messageData->wr_id))
     {
         perror("Failed to send RDMA read");
         free(kv_handle->clients_ctx[client_id]->resources[wr_id].key_buffer);

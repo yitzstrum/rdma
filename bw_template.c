@@ -752,7 +752,7 @@ struct pingpong_dest *pp_server_exch_dest(struct ibv_qp* qp,
 }
 
 int pp_post_rdma(struct pingpong_context* ctx, MessageData* messageData, enum ibv_wr_opcode opcode,
-        uintptr_t buffer_address)
+        uintptr_t buffer_address, int wr_id)
 {
     printf("-------------pp_post_rdma------------\n");
     printf("buffer address: %lu\n", buffer_address);
@@ -767,7 +767,7 @@ int pp_post_rdma(struct pingpong_context* ctx, MessageData* messageData, enum ib
 
     struct ibv_send_wr* bad_wr;
     struct ibv_send_wr wr = {
-            .wr_id       = messageData->wr_id,
+            .wr_id       = wr_id,
             .sg_list     = &list,
             .num_sge     = 1,
             .opcode      = opcode,

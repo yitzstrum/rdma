@@ -134,7 +134,7 @@ int rendezvous_get(KvHandle* kv_handle, MessageData* messageData, char** value)
             IBV_ACCESS_LOCAL_WRITE);
     messageData->wr_id = kv_handle->ctx->count_send;
 
-    if(pp_post_rdma(kv_handle->ctx, messageData, IBV_WR_RDMA_READ, buffer_address)){
+    if(pp_post_rdma(kv_handle->ctx, messageData, IBV_WR_RDMA_READ, buffer_address, RDMA)){
         printf("error send\n");
         return 1;
     }
