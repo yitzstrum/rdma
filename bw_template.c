@@ -549,6 +549,8 @@ char* copy_message_data_to_buf(char* buf_pointer, size_t keySize, size_t valueSi
 char* get_message_data(char* buffer, MessageData* messageData){
     printf("-------------get_message_data-------------start-------------\n");
 
+    printf("The buffers address is: %s\n", buffer);
+
     memcpy(messageData, buffer, sizeof(MessageData));
 
     printf("Protocol: %u\n", messageData->Protocol);
@@ -570,14 +572,6 @@ int pp_post_send_server(KvHandle *kv_handle, struct pingpong_context* ctx, struc
     {
         return 1;
     }
-
-//    if (pull_cq(kv_handle, completion_work, iters) != 0)
-//    {
-//        return 1;
-//    }
-
-    // TODO: Add work receive
-
     return 0;
 }
 
