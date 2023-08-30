@@ -120,10 +120,6 @@ void measure_set_throughput_by_message_size(KvHandle* kv_handle, int message_siz
 
 int main(int argc, char *argv[])
 {
-        while(1)
-        {
-            fprintf(stderr, "Segmentation Fault");
-        }
         char* servername = NULL;
         srand48(getpid() * time(NULL));
 
@@ -172,6 +168,7 @@ int main(int argc, char *argv[])
 
             char *received_value = NULL;
 
+            sleep(5);
             if (kv_get((void *)kv_handle, key, &received_value) != 0)
             {
                 fprintf(stderr, "Client failed to preform get\n");
