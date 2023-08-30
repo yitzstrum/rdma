@@ -164,32 +164,14 @@ int rendezvous_get(KvHandle* kv_handle, MessageData* messageData, char** value)
 }
 
 
-int kv_open(char *servername, void** obj)
-{
-    KvHandle* networkContext = *((KvHandle **) obj);
 
-    networkContext->rem_dest = pp_client_exch_dest(servername, &networkContext->my_dest);
-    if (!networkContext->rem_dest) {
-        return 1;
-    }
 
-    inet_ntop(AF_INET6, &networkContext->rem_dest->gid, networkContext->gid,
-              sizeof networkContext->gid);
-//    printf("  remote address: LID 0x%04x, QPN 0x%06x, PSN 0x%06x, GID %s\n",
-//           networkContext->rem_dest->lid, networkContext->rem_dest->qpn, networkContext->rem_dest->psn, networkContext-> gid);
 
-    if (pp_connect_ctx(networkContext->ctx->qp, networkContext->my_dest.psn,
-                       networkContext->rem_dest, networkContext->gidx)) {
-        return 1;
-    }
-
-    return 0;
-}
 
 int kv_set(void* obj, const char *key, const char *value)
 {
     KvHandle* kv_handle = (KvHandle *) obj;
-//    free_set_malloc(kv_handle); todo
+
     // We add 1 because strlen does not cont the null byte \0
     size_t key_size = strlen(key) + 1;
     size_t value_size = strlen(value) + 1;
@@ -200,11 +182,9 @@ int kv_set(void* obj, const char *key, const char *value)
     {
         return eager_set(kv_handle, key, value, key_size, value_size);
     }
-//
-//    return rendezvous_set(kv_handle, key, value, key_size, value_size);
-//    return 0;
-}
 
+    return rendezvous_set(kv_handle, key, value, key_size, value_size);
+}
 
 int kv_get(void *obj, const char *key, char **value)
 {
@@ -239,6 +219,27 @@ int kv_get(void *obj, const char *key, char **value)
         default:
             return 1;
     }
+}
+
+int kv_open(char *servername, void** obj)
+{
+    KvHandle* networkContext = *((KvHandle **) obj);
+
+    networkContext->rem_dest = pp_client_exch_dest(servername, &networkContext->my_dest);
+    if (!networkContext->rem_dest) {
+        return 1;
+    }
+
+    inet_ntop(AF_INET6, &networkContext->rem_dest->gid, networkContext->gid,
+              sizeof networkContext->gid);
+//    printf("  remote address: LID 0x%04x, QPN 0x%06x, PSN 0x%06x, GID %s\n",
+//           networkContext->rem_dest->lid, networkContext->rem_dest->qpn, networkContext->rem_dest->psn, networkContext-> gid);
+
+    if (pp_connect_ctx(networkContext->ctx->qp, networkContext->my_dest.psn,
+                       networkContext->rem_dest, networkContext->gidx)) {
+        return 1;
+    }
+
     return 0;
 }
 
