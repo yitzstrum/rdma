@@ -223,20 +223,18 @@ int kv_get(void *obj, const char *key, char **value)
 
 int kv_open(char *servername, void** obj)
 {
-    KvHandle* networkContext = *((KvHandle **) obj);
+    KvHandle* kv_handle = *((KvHandle **) obj);
 
-    networkContext->rem_dest = pp_client_exch_dest(servername, &networkContext->my_dest);
-    if (!networkContext->rem_dest) {
+    kv_handle->rem_dest = pp_client_exch_dest(servername, &kv_handle->my_dest);
+    if (!kv_handle->rem_dest) {
         return 1;
     }
 
-    inet_ntop(AF_INET6, &networkContext->rem_dest->gid, networkContext->gid,
-              sizeof networkContext->gid);
-//    printf("  remote address: LID 0x%04x, QPN 0x%06x, PSN 0x%06x, GID %s\n",
-//           networkContext->rem_dest->lid, networkContext->rem_dest->qpn, networkContext->rem_dest->psn, networkContext-> gid);
+    inet_ntop(AF_INET6, &kv_handle->rem_dest->gid, kv_handle->gid,
+              sizeof kv_handle->gid);
 
-    if (pp_connect_ctx(networkContext->ctx->qp, networkContext->my_dest.psn,
-                       networkContext->rem_dest, networkContext->gidx)) {
+    if (pp_connect_ctx(kv_handle->ctx->qp, kv_handle->my_dest.psn,
+                       kv_handle->rem_dest, kv_handle->gidx)) {
         return 1;
     }
 

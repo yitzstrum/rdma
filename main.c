@@ -11,6 +11,7 @@
 
 #define NUM_WARMUP_REQUESTS (99)
 #define STRING_LENGTH (10)
+
 char* generate_random_string() {
     // Seed the random number generator with the current time
     srand(time(NULL));
@@ -21,7 +22,6 @@ char* generate_random_string() {
         random_string[i] = 'A' + random_number;
     }
     random_string[STRING_LENGTH] = '\0';
-
     return random_string;
 }
 
@@ -49,14 +49,14 @@ int warmup(KvHandle* pHandler)
     return 0;
 }
 
-void measure_eager_throughput(KvHandle * pHandler)
+void measure_eager_throughput(KvHandle *kv_handle)
 {
     const int total_requests = 100;
     int value_sizes[] = {1022, 2046, 4095};
     printf("Message Size, Throughput (KB/s)\n");
     for (int j = 0; j < 3; j++) {
         int message_size = value_sizes[j];
-        if (warmup(pHandler) != 0) {
+        if (warmup(kv_handle) != 0) {
             return;
         }
 
@@ -66,13 +66,13 @@ void measure_eager_throughput(KvHandle * pHandler)
 
         memset(value_data, 'A', message_size - 1);
         value_data[message_size - 1] = '\0';
-        if (kv_set((void *)pHandler, key_data, value_data) != 0) {
+        if (kv_set((void *)kv_handle, key_data, value_data) != 0) {
             return;
         }
 
         uint64_t start_time = clock();
         for (int i = 0; i < total_requests; i++) {
-            kv_get(pHandler, key_data, &received_value);
+            kv_get(kv_handle, key_data, &received_value);
         }
         uint64_t end_time = clock();
         uint64_t elapsed_time = end_time - start_time;
@@ -83,6 +83,7 @@ void measure_eager_throughput(KvHandle * pHandler)
         free(received_value);
     }
 }
+
 int main(int argc, char *argv[])
 {
         char* servername = NULL;
@@ -104,11 +105,13 @@ int main(int argc, char *argv[])
             return 1;
         }
 
+        // Client
         if (servername)
         {
             if(init_client_post_recv(kv_handle)){
                 return 1;
             }
+            // Initialize Work Request sent.
             kv_handle->ctx->count_send=0;
 
             if (kv_open(servername, (void **) &kv_handle) != 0)
@@ -119,28 +122,14 @@ int main(int argc, char *argv[])
 
 //            measure_eager_throughput(kv_handle);
             const char *key = "key";
-//            const char *key1 = "key1";
-//            const char *key2 = "key2";
             const char *value = "value";
-//            const char *value1 = "value1";
-//            const char *value2 = "value2";
 
             if (kv_set((void *)kv_handle, key, value) != 0)
             {
                 return 1;
             }
-//            if (kv_set((void *)kv_handle, key1, value1) != 0)
-//            {
-//                return 1;
-//            }
-//            if (kv_set((void *)kv_handle, key2, value2) != 0)
-//            {
-//                return 1;
-//            }
 
-//            sleep(10);
             char *received_value = NULL;
-//            sleep(5);
             if (kv_get((void *)kv_handle, key, &received_value) != 0)
             {
                 fprintf(stderr, "Client failed to preform get\n");
@@ -148,31 +137,19 @@ int main(int argc, char *argv[])
             }
             printf("%s: %s\n", key, received_value);
 
-//            if (kv_get((void *)kv_handle, key1, &received_value) != 0)
-//            {
-//                fprintf(stderr, "Client failed to preform get\n");
-//                return 1;
-//            }
-//            printf("%s: %s\n", key1, received_value);
-//            if (kv_get((void *)kv_handle, key2, &received_value) != 0)
-//            {
-//                fprintf(stderr, "Client failed to preform get\n");
-//                return 1;
-//            }
-//            printf("%s: %s\n", key2, received_value);
 
             kv_release(received_value);
         }
 
+        // Server
         else
         {
             start_server((void *) kv_handle);
             for (int i = 0; i < NUM_OF_CLIENTS; ++i) {
-//                pp_close_ctx((kv_handle)->clients_ctx[i]);
+                pp_close_ctx(kv_handle->clients_ctx[i]);
             }
         }
 
-//          free_kv_handler((Kv_handle **) &pHandler);
-
-            return 0;
+        release_kv_handler((KvHandle **) &kv_handle);
+        return 0;
     }

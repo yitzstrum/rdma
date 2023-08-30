@@ -555,28 +555,6 @@ char* get_message_data(char* buffer, MessageData* messageData){
     return buffer + sizeof(MessageData);
 }
 
-char* get_wr_details_client(KvHandle *kv_handle, MessageData* messageData){
-    printf("-------------get_wr_details_client-------------start-------------\n");
-    char* buffer=kv_handle->ctx->buf;
-
-    memcpy(&messageData->Protocol, buffer, sizeof(messageData->Protocol));
-    buffer += sizeof(messageData->Protocol);
-    printf("Protocol: %u\n", messageData->Protocol);
-
-    memcpy(&messageData->operationType, buffer, sizeof(messageData->operationType));
-    buffer += sizeof(messageData->operationType);
-    printf("operationType: %u\n", messageData->operationType);
-
-    memcpy(&messageData->keySize, buffer, sizeof(messageData->keySize));
-    buffer += sizeof(messageData->keySize);
-    printf("keySize: %zu\n", messageData->keySize);
-
-
-    memcpy(&messageData->valueSize, buffer, sizeof(messageData->valueSize));
-    printf("valueSize: %zu\n", messageData->valueSize);
-    return buffer + sizeof(messageData->valueSize);
-}
-
 int pp_post_send_server(KvHandle *kv_handle, struct pingpong_context* ctx, struct ibv_wc* wc, int iters)
 {
     struct ibv_wc tmp;
@@ -796,4 +774,53 @@ int pp_post_rdma(struct pingpong_context* ctx, MessageData* messageData, enum ib
     };
     printf("-------------pp_post_rdma_end------------\n");
     return ibv_post_send(ctx->qp, &wr, &bad_wr);
+}
+
+int pp_close_ctx(struct pingpong_context *ctx)
+{
+    if (ibv_destroy_qp(ctx->qp)) {
+        fprintf(stderr, "Couldn't destroy QP\n");
+        return 1;
+    }
+
+    if (ibv_destroy_cq(ctx->cq)) {
+        fprintf(stderr, "Couldn't destroy CQ\n");
+        return 1;
+    }
+
+    if (ibv_dereg_mr(ctx->mr)) {
+        fprintf(stderr, "Couldn't deregister MR\n");
+        return 1;
+    }
+
+    if (ibv_dealloc_pd(ctx->pd)) {
+        fprintf(stderr, "Couldn't deallocate PD\n");
+        return 1;
+    }
+
+    if (ctx->channel) {
+        if (ibv_destroy_comp_channel(ctx->channel)) {
+            fprintf(stderr, "Couldn't destroy completion channel\n");
+            return 1;
+        }
+    }
+
+
+    free(ctx->buf);
+    free(ctx);
+
+    return 0;
+}
+
+void release_kv_handler(KvHandle** kv_handle)
+{
+    if (kv_handle)
+    {
+        ibv_free_device_list((*kv_handle)->dev_list);
+        free((*kv_handle)->rem_dest);
+        if (ibv_close_device((*kv_handle)->context)){
+            return;
+        }
+        *kv_handle = NULL;
+    }
 }
