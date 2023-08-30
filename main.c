@@ -9,79 +9,113 @@
 #include "Server.h"
 #include "bw_template.h"
 
-#define NUM_WARMUP_REQUESTS (99)
 #define STRING_LENGTH (10)
+#define NUM_WARMUP_REQUESTS (100)
+#define TOTAL_REQUESTS (1000)
+#define KEY_LEN (2)
+#define MAX_RENDEZVOUS_MSG_SIZE (1048832)
+#define MB (1048576)
 
-char* generate_random_string() {
-    // Seed the random number generator with the current time
+void generate_random_string(char** str, int key_length) {
     srand(time(NULL));
-    char* random_string = (char*)malloc((STRING_LENGTH + 1) * sizeof(char));
-
-    for (int i = 0; i < STRING_LENGTH; i++) {
-        int random_number = rand() % 26;
-        random_string[i] = 'A' + random_number;
+    *str = (char*)malloc((key_length) * sizeof(char));
+    if (*str == NULL)
+    {
+        printf("Failed malloc\n");
+        return;
     }
-    random_string[STRING_LENGTH] = '\0';
-    return random_string;
+    for (int i = 0; i < key_length - 1; i++) {
+        int random_number = rand() % 26;
+        (*str)[i] = 'A' + random_number;
+    }
+    (*str)[key_length - 1] = '\0';
 }
 
-int warmup(KvHandle* pHandler)
+int warmup(KvHandle * pHandler)
 {
-    char* key = generate_random_string();
-    printf("key %s\n", key);
-    const int value_size = MAX_EAGER_SIZE - STRING_LENGTH - 1;
+    const int value_size = MAX_EAGER_SIZE - KEY_LEN - 1;
+
     char *value = malloc(value_size);
     memset(value, 'A', value_size - 1);
     value[value_size - 1] = '\0';
+
+    char* key;
+    generate_random_string(&key, KEY_LEN);
 
     if (kv_set((void *)pHandler, key, value) != 0) {
         free(key);
         return 1;
     }
 
-    for (int i = 0; i < NUM_WARMUP_REQUESTS; ++i) {
-        if (kv_get((void *)pHandler, key, &value) != 0) {
+    char* receivedValue;
+    for (int i = 0; i < NUM_WARMUP_REQUESTS - 1; ++i) {
+        if (kv_get((void *)pHandler, key, &receivedValue) != 0) {
             return 1;
         }
     }
-    free(key);
 
+    kv_release(receivedValue);
+    free(key);
     return 0;
 }
 
-void measure_eager_throughput(KvHandle *kv_handle)
+void calculate_throughput(clock_t start_time, clock_t end_time, size_t bytes_size) {
+    double elapsed_time = (double) (end_time - start_time) / CLOCKS_PER_SEC;
+    double throughput = (TOTAL_REQUESTS / elapsed_time) * bytes_size;
+    double throughput_in_MBS = throughput / MB;
+    printf("%zu\t%.2f\tMBs\n", bytes_size, throughput_in_MBS);
+}
+
+void measure_get_throughput_by_message_size(KvHandle * kv_handle, int message_size)
 {
-    const int total_requests = 100;
-    int value_sizes[] = {1022, 2046, 4095};
-    printf("Message Size, Throughput (KB/s)\n");
-    for (int j = 0; j < 3; j++) {
-        int message_size = value_sizes[j];
-        if (warmup(kv_handle) != 0) {
-            return;
-        }
-
-        const char *key_data = "A";
-        char *value_data = malloc(message_size);
-        char* received_value = malloc(message_size);
-
-        memset(value_data, 'A', message_size - 1);
-        value_data[message_size - 1] = '\0';
-        if (kv_set((void *)kv_handle, key_data, value_data) != 0) {
-            return;
-        }
-
-        uint64_t start_time = clock();
-        for (int i = 0; i < total_requests; i++) {
-            kv_get(kv_handle, key_data, &received_value);
-        }
-        uint64_t end_time = clock();
-        uint64_t elapsed_time = end_time - start_time;
-        double throughput = (double)(message_size * 2) / 1024 / (double)elapsed_time * CLOCKS_PER_SEC; // KB/s
-        printf("#%d, %.2f KB/s\n", message_size + 2, throughput);
-
-        free(value_data);
-        free(received_value);
+    if (warmup(kv_handle) != 0) {
+        return;
     }
+
+    int value_size = message_size - KEY_LEN;
+    char *value_data = malloc(value_size);
+    memset(value_data, 'A', value_size - 1);
+    value_data[message_size - 1] = '\0';
+
+    char *key_data;
+    generate_random_string(&key_data, KEY_LEN);
+    if (kv_set(kv_handle, key_data, value_data) != 0) {
+        return;
+    }
+    kv_release(value_data);
+
+    char* received_value;
+    clock_t start_time = clock();
+    for (int i = 0; i < TOTAL_REQUESTS; i++) {
+        kv_get(kv_handle, key_data, &received_value);
+    }
+    clock_t end_time = clock();
+    calculate_throughput(start_time, end_time, message_size);
+
+    kv_release(received_value);
+}
+
+void measure_set_throughput_by_message_size(KvHandle* kv_handle, int message_size)
+{
+    if (warmup(kv_handle) != 0) {
+        return;
+    }
+
+    int value_size = message_size - KEY_LEN;
+    char *value_data = malloc(value_size);
+    memset(value_data, 'A', value_size - 1);
+    value_data[message_size - 1] = '\0';
+
+    char *key_data;
+    generate_random_string(&key_data, KEY_LEN);
+
+    clock_t start_time = clock();
+    for (int i = 0; i < TOTAL_REQUESTS; i++) {
+        if (kv_set(kv_handle, key_data, value_data) != 0)
+            return;
+    }
+    clock_t end_time = clock();
+    calculate_throughput(start_time, end_time, message_size);
 }
 
 int main(int argc, char *argv[])
@@ -101,7 +135,7 @@ int main(int argc, char *argv[])
 
         if (init_network_context(kv_handle, servername) != 0)
         {
-            fprintf(stderr, "Couldn't init Kv_handle");
+            fprintf(stderr, "failed to initialize KvHandle");
             return 1;
         }
 
@@ -120,7 +154,10 @@ int main(int argc, char *argv[])
                 return 1;
             }
 
-//            measure_eager_throughput(kv_handle);
+//            for (int message_size = 4; message_size <= MAX_RENDEZVOUS_MSG_SIZE; message_size *= 2) {
+//                measure_set_throughput_by_message_size(kv_handle, message_size);
+//            }
+
             const char *key = "key";
             const char *value = "value";
 
@@ -148,6 +185,7 @@ int main(int argc, char *argv[])
             for (int i = 0; i < NUM_OF_CLIENTS; ++i) {
                 pp_close_ctx(kv_handle->clients_ctx[i]);
             }
+            release_db(kv_handle->hashTable);
         }
 
         release_kv_handler((KvHandle **) &kv_handle);

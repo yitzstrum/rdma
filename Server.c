@@ -167,26 +167,24 @@ int eager_set_server(KvHandle *kv_handle, MessageData* messageData, char* data){
         fprintf(stderr, "hashtable set failed\n");
         return 1;
     }
+
+    free_and_reset_ptr(key);
+    free_and_reset_ptr(value);
     return 0;
 }
 
-int eager_get_server(KvHandle *kv_handle, MessageData* messageData, char* value){
-    // TODO: make sure we receive the correct value, if not we need to malloc
+int eager_get_server(KvHandle *kv_handle, MessageData* messageData, char* value, char* key){
     printf("-------------eager_get_server-------------\n");
-//    char* key = malloc(messageData->keySize);
-//    memcpy(key, data, messageData->keySize);
-//    printf("The key is: %s\n", key);
-//    char* value = NULL;
-//    hashTable_get(key, &value,kv_handle->hashTable);
 
     char* bufferPointer = kv_handle->clients_ctx[messageData->client_id]->buf;
-
-//    printf("The size of the value is: %lu\n", strlen(value));
-//    printf("The value is: %s\n", value);
 
     bufferPointer = copy_message_data_to_buf(bufferPointer, 0, strlen(value) + 1,
                                              GET, EAGER, NULL, 0, 0);
     strcpy(bufferPointer, value);
+    hashTable_release_lock(key, kv_handle->hashTable);
+
+    free_and_reset_ptr(key);
+    free_and_reset_ptr(value);
     if (pp_post_send_server(kv_handle, kv_handle->clients_ctx[messageData->client_id], NULL, 1))
     {
         perror("Server failed to send the value");
@@ -249,7 +247,7 @@ int rendezvous_set_server(KvHandle *kv_handle, MessageData* messageData, char* d
     return 0;
 }
 
-int rendezvous_get_server(KvHandle *kv_handle, MessageData* messageData, size_t dataSize, char* value){
+int rendezvous_get_server(KvHandle *kv_handle, MessageData* messageData, size_t dataSize, char* value, char* key){
     printf("-------------rendezvous_get_server_start ------------\n");
 
     int client_id = messageData->client_id;
@@ -259,6 +257,10 @@ int rendezvous_get_server(KvHandle *kv_handle, MessageData* messageData, size_t 
     kv_handle->clients_ctx[client_id]->resources[wr_id].value_buffer = malloc(dataSize);
     void* value_buf = kv_handle->clients_ctx[client_id]->resources[wr_id].value_buffer;
     strcpy(value_buf, value);
+
+    hashTable_release_lock(key, kv_handle->hashTable);
+    free_and_reset_ptr(key);
+
     printf("The new value buffer contains: %s\n", value_buf);
     printf("The new buffers address is: %p\n", value_buf);
 
@@ -275,7 +277,6 @@ int rendezvous_get_server(KvHandle *kv_handle, MessageData* messageData, size_t 
         return 1;
     }
 
-
     char* buf_pointer = kv_handle->clients_ctx[client_id]->resources[wr_id].buf;
     copy_message_data_to_buf(buf_pointer, 0, dataSize, GET,
                            RENDEZVOUS, value_buf,
@@ -284,8 +285,6 @@ int rendezvous_get_server(KvHandle *kv_handle, MessageData* messageData, size_t 
         printf("error send\n");
         return 1;
     }
-
-//    char* value_buffer = malloc()
     return 0;
 }
 
@@ -307,19 +306,20 @@ int kv_get_server(KvHandle *kv_handle, MessageData* messageData, char* data){
     char* key = malloc(messageData->keySize);
     memcpy(key, data, messageData->keySize);
     char* value = NULL;
-    hashTable_get(key, &value,kv_handle->hashTable);
+    hashTable_set_lock(key, kv_handle->hashTable);
+    hashTable_get(key, &value, kv_handle->hashTable);
     printf("The key is: %s\n", key);
     printf("The value is: %s\n", value);
 
 
 
     size_t dataSize = strlen(value) + 1;
-//    if (dataSize < MAX_EAGER_SIZE)
-//    {
-//        return eager_get_server(kv_handle, messageData, value);
-//    }
+    if (dataSize < MAX_EAGER_SIZE)
+    {
+        return eager_get_server(kv_handle, messageData, value, key);
+    }
 
-    return rendezvous_get_server(kv_handle, messageData,  dataSize, value);
+    return rendezvous_get_server(kv_handle, messageData,  dataSize, value, key);
 }
 
 int rdma_read_returned(KvHandle* kv_handle, uint64_t wr_id, int client_id)
@@ -367,6 +367,14 @@ int process(KvHandle *kv_handle){
     if (client_id == -1)
     {
         fprintf(stderr, "Failed to get client id");
+    }
+
+    if (wc.opcode == IBV_WC_RECV && --kv_handle->clients_ctx[client_id]->routs == 0)
+    {
+        if(restore_post_receive_queue(kv_handle->clients_ctx[client_id]))
+        {
+            return 1;
+        }
     }
 
     printf("opcode: %d\n", wc.opcode);

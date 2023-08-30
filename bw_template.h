@@ -128,7 +128,7 @@ void gid_to_wire_gid(const union ibv_gid *gid, char wgid[]);
 
 
 //set and get - helper function
-int add_work_recv(struct pingpong_context* ctx);
+int restore_post_receive_queue(struct pingpong_context* ctx);
 int empty_cq(KvHandle* kv_handle, struct ibv_wc *wc, int stopCondition);
 int pull_cq(KvHandle * kv_handle, struct ibv_wc *wc, int iters);
 int pp_post_send(struct pingpong_context *ctx);

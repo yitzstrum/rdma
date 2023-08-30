@@ -225,10 +225,10 @@ int pp_post_recv_client(struct pingpong_context *ctx, int n)
     return i;
 }
 
-int init_client_post_recv(KvHandle* networkContext){
-    networkContext->ctx->routs = pp_post_recv_client(networkContext->ctx, networkContext->ctx->rx_depth);
-    if (networkContext->ctx->routs < networkContext->ctx->rx_depth) {
-        fprintf(stderr, "Couldn't post receive (%d)\n", networkContext->ctx->routs);
+int init_client_post_recv(KvHandle* kv_handle){
+    kv_handle->ctx->routs = pp_post_recv_client(kv_handle->ctx, kv_handle->ctx->rx_depth);
+    if (kv_handle->ctx->routs < kv_handle->ctx->rx_depth) {
+        fprintf(stderr, "Couldn't post receive (%d)\n", kv_handle->ctx->routs);
         return 1;
     }
     return 0;
@@ -414,20 +414,6 @@ int pp_connect_ctx(struct ibv_qp* qp, int my_psn,
     return 0;
 }
 
-//set and get - helper function
-int add_work_recv(struct pingpong_context* ctx)
-{
-    if (--ctx->routs == 0) {
-        ctx->routs += pp_post_recv_client(ctx, ctx->rx_depth - ctx->routs);
-        if (ctx->routs < ctx->rx_depth) {
-            fprintf(stderr, "Couldn't post receive (%d)\n", ctx->routs);
-            return 1;
-        }
-    }
-
-    return 0;
-}
-
 int pull_cq(KvHandle * kv_handle, struct ibv_wc *wc, int iters)
 {
     printf("-------------Pull_CQ-------------\n");
@@ -458,6 +444,17 @@ int pull_cq(KvHandle * kv_handle, struct ibv_wc *wc, int iters)
     return 0;
 }
 
+int restore_post_receive_queue(struct pingpong_context* ctx)
+{
+    ctx->routs = pp_post_recv_client(ctx, ctx->rx_depth);
+    if (ctx->routs < ctx->rx_depth)
+    {
+        fprintf(stderr, "Failed to post receive %d messages\n", ctx->rx_depth - ctx->routs);
+        return 1;
+    }
+    return 0;
+}
+
 int empty_cq(KvHandle* kv_handle, struct ibv_wc *wc, int stopCondition)
 {
     printf("-------------empty_cq-------------\n");
@@ -484,6 +481,15 @@ int empty_cq(KvHandle* kv_handle, struct ibv_wc *wc, int stopCondition)
                 return 0;
             }
         } while (ne < 1);
+
+        if (wc->opcode == IBV_WC_RECV && --kv_handle->ctx == 0)
+        {
+            if (restore_post_receive_queue(kv_handle->ctx))
+            {
+                return 1;
+            }
+        }
+
 
         if (wc->status != IBV_WC_SUCCESS) {
             fprintf(stderr, "Failed status %s (%d) for wr_id %d\n",

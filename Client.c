@@ -70,9 +70,7 @@ int eager_get(MessageData* messageData, char* data, char** value)
     printf("-------------eager_get-------------start-------------\n");
     *value = malloc(messageData->valueSize);
     if (!*value) {return 1;}
-//    char* data = (char *)((uint8_t*)response + header_size);
     memcpy(*value, data, messageData->valueSize);
-//    printf("Value: %s\n", *value);
     return 0;
 }
 
@@ -162,11 +160,6 @@ int rendezvous_get(KvHandle* kv_handle, MessageData* messageData, char** value)
     printf("value get from rend: %s\n", *value);
     return 0;
 }
-
-
-
-
-
 
 int kv_set(void* obj, const char *key, const char *value)
 {
