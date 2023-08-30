@@ -51,6 +51,7 @@ typedef struct MessageData
     void* value_address;
     uint32_t rkey;
     int fin;
+    int countSend;
 } MessageData;
 
 typedef struct Resource
