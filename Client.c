@@ -104,7 +104,7 @@ int rendezvous_set(KvHandle* kv_handle, const char* key, const char* value, size
     void* value_address = kv_handle->ctx->resources[kv_handle->ctx->count_send].value_buffer;
 
     buf_pointer = copy_message_data_to_buf(buf_pointer, keySize, valueSize, SET, RENDEZVOUS,
-                                           value_address, rkey, 0);
+                                           value_address, rkey, kv_handle->ctx->count_send);
 
     printf("Value Address - P: %p\n", value_address);
     printf("rkey: %u\n", rkey);

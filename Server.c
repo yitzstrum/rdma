@@ -139,6 +139,10 @@ char* get_job(KvHandle *kv_handle, MessageData* messageData, struct ibv_wc* wc){
         return NULL;
     }
 
+    // When the client sent a Set RNDVZ, it sent the countSend as the wr_id
+    // We will send the countSend back to the client in order to release the value buffer.
+    messageData->countSend = messageData->wr_id;
+
     messageData->client_id = client_id;
     messageData->wr_id = wr_id;
 
@@ -324,9 +328,10 @@ int kv_get_server(KvHandle *kv_handle, MessageData* messageData, char* data){
 
 int rdma_read_returned(KvHandle* kv_handle, uint64_t wr_id, int client_id)
 {
-    // TODO: Which buffer do we want to send here?
-    strcpy(kv_handle->clients_ctx[client_id]->buf, "FIN");
-
+    MessageData messageData;
+    memset(&messageData, 0, sizeof(MessageData));
+    messageData.fin = 1;
+    memcpy(kv_handle->clients_ctx[client_id]->buf, &messageData, sizeof(MessageData));
     if (pp_post_send(kv_handle->clients_ctx[client_id]))
     {
         fprintf(stderr, "Failed to send FIN");
