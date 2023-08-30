@@ -49,6 +49,7 @@ bool checkResize(HashTable* table) {
 
 int hashTable_set(const char* key, char* value, HashTable* table) {
     unsigned int index = hash(key);
+    // Allocate memory for key and vale;
 
     // Check if the key already exists
     KeyValuePair* entry = table->entries[index];
@@ -70,7 +71,7 @@ int hashTable_set(const char* key, char* value, HashTable* table) {
         return 1;
     }
     newEntry->key = strdup(key);
-    newEntry->value = value;
+    newEntry->value = strdup(value);
     newEntry->is_dirty = false;
     newEntry->next = NULL;
 

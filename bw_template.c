@@ -211,7 +211,7 @@ int pp_post_recv_client(struct pingpong_context *ctx, int n)
             .lkey    = ctx->mr->lkey
     };
     struct ibv_recv_wr wr = {
-            .wr_id        = CLIENT_RECEIVE,
+            .wr_id      = CLIENT_RECEIVE,
             .sg_list    = &list,
             .num_sge    = 1,
             .next       = NULL
@@ -428,13 +428,19 @@ int add_work_recv(struct pingpong_context* ctx)
     return 0;
 }
 
-int pull_cq(KvHandle * pHandler, struct ibv_wc *wc, int iters)
+int pull_cq(KvHandle * kv_handle, struct ibv_wc *wc, int iters)
 {
+    printf("-------------Pull_CQ-------------\n");
+    printf("Iters: %d\n", iters);
     for (int i = 0; i < iters; ++i)
     {
         int ne;
         do {
-            ne = ibv_poll_cq(pHandler->ctx->cq, 1, wc);
+            ne = ibv_poll_cq(kv_handle->ctx->cq, 1, wc);
+            if (ne != 0)
+            {
+                printf("ne = %d\nwc->wr_id = %lu\n", ne, wc->wr_id);
+            }
             if (ne < 0) {
                 fprintf(stderr, "poll CQ failed %d\n", ne);
                 wc = NULL;
@@ -452,20 +458,27 @@ int pull_cq(KvHandle * pHandler, struct ibv_wc *wc, int iters)
     return 0;
 }
 
-int empty_cq(KvHandle* pHandler, struct ibv_wc *wc, int stopCondition)
+int empty_cq(KvHandle* kv_handle, struct ibv_wc *wc, int stopCondition)
 {
-    int wr_id = 0;
+    printf("-------------empty_cq-------------\n");
+    int wr_id = -1;
+    printf("Stop condition: %d\n", stopCondition);
     while (wr_id != stopCondition)
     {
         int ne;
         do {
-            ne = ibv_poll_cq(pHandler->ctx->cq, 1, wc);
+            ne = ibv_poll_cq(kv_handle->ctx->cq, 1, wc);
+            if (ne != 0)
+            {
+                printf("ne = %d\nwc->wr_id = %lu\n", ne, wc->wr_id);
+            }
             if (ne < 0) {
                 fprintf(stderr, "poll CQ failed %d\n", ne);
                 wc = NULL;
                 return 1;
             }
-            // If I came from the client set function I don't block the flow
+
+
             if (stopCondition == I_SEND_SET && ne == 0)
             {
                 return 0;
@@ -478,12 +491,13 @@ int empty_cq(KvHandle* pHandler, struct ibv_wc *wc, int stopCondition)
                     wc->status, (int) wc->wr_id);
             return 1;
         }
+
         wr_id = wc->wr_id;
         // The wc is the message received from the server through the post receive queue
         if (wr_id < MAX_RESOURCES)
         {
-            free(pHandler->ctx->resources[wr_id].buf);
-            ibv_dereg_mr(pHandler->ctx->resources[wr_id].mr);
+            free(kv_handle->ctx->resources[wr_id].buf);
+            ibv_dereg_mr(kv_handle->ctx->resources[wr_id].mr);
         }
 
     }
@@ -510,7 +524,8 @@ int pp_post_send(struct pingpong_context *ctx)
     return ibv_post_send(ctx->qp, &wr, &bad_wr);
 }
 
-char* copy_message_data_to_buf(char* buf_pointer, size_t keySize, size_t valueSize, enum OperationType operation, enum Protocol protocol, void* value_address, uint32_t rkey)
+char* copy_message_data_to_buf(char* buf_pointer, size_t keySize, size_t valueSize, enum OperationType operation,
+        enum Protocol protocol, void* value_address, uint32_t rkey, int wr_id)
 {
     MessageData messageData;
     memset(&messageData, 0, sizeof(MessageData));
@@ -520,6 +535,7 @@ char* copy_message_data_to_buf(char* buf_pointer, size_t keySize, size_t valueSi
     messageData.valueSize = valueSize;
     messageData.value_address = value_address;
     messageData.rkey = rkey;
+    messageData.wr_id = wr_id;
     memcpy(buf_pointer, &messageData, sizeof(MessageData));
     return buf_pointer + sizeof(MessageData);
 }
@@ -533,6 +549,7 @@ char* get_message_data(char* buffer, MessageData* messageData){
     printf("operationType: %u\n", messageData->operationType);
     printf("keySize: %zu\n", messageData->keySize);
     printf("valueSize: %zu\n", messageData->valueSize);
+    printf("Value Address: %p\n", messageData->value_address);
     printf("-------------get_message_data-------------end-------------\n");
 
     return buffer + sizeof(MessageData);
@@ -560,7 +577,7 @@ char* get_wr_details_client(KvHandle *kv_handle, MessageData* messageData){
     return buffer + sizeof(messageData->valueSize);
 }
 
-int pp_post_send_and_wait(KvHandle *kv_handle, struct pingpong_context* ctx, struct ibv_wc* wc, int iters)
+int pp_post_send_server(KvHandle *kv_handle, struct pingpong_context* ctx, struct ibv_wc* wc, int iters)
 {
     struct ibv_wc tmp;
     struct ibv_wc* completion_work = wc == NULL ? &tmp : wc;
@@ -570,10 +587,10 @@ int pp_post_send_and_wait(KvHandle *kv_handle, struct pingpong_context* ctx, str
         return 1;
     }
 
-    if (pull_cq(kv_handle, completion_work, iters) != 0)
-    {
-        return 1;
-    }
+//    if (pull_cq(kv_handle, completion_work, iters) != 0)
+//    {
+//        return 1;
+//    }
 
     // TODO: Add work receive
 
@@ -752,17 +769,23 @@ struct pingpong_dest *pp_server_exch_dest(struct ibv_qp* qp,
     return rem_dest;
 }
 
-int pp_post_rdma(struct pingpong_context* ctx, MessageData* messageData, enum ibv_wr_opcode opcode)
+int pp_post_rdma(struct pingpong_context* ctx, MessageData* messageData, enum ibv_wr_opcode opcode,
+        uintptr_t buffer_address)
 {
+    printf("-------------pp_post_rdma------------\n");
+    printf("buffer address: %lu\n", buffer_address);
+    printf("value size: %lu\n", messageData->valueSize);
+    printf("value address: %lu\n", (uintptr_t)messageData->value_address);
+
     struct ibv_sge list = {
-            .addr   = (uintptr_t)ctx->resources[messageData->wr_id].value_buffer,
+            .addr   = buffer_address,
             .length = messageData->valueSize,
             .lkey   = ctx->resources[messageData->wr_id].value_mr->lkey
     };
 
     struct ibv_send_wr* bad_wr;
     struct ibv_send_wr wr = {
-            .wr_id       = messageData->wr_id,
+            .wr_id       = RDMA,
             .sg_list     = &list,
             .num_sge     = 1,
             .opcode      = opcode,
@@ -771,6 +794,6 @@ int pp_post_rdma(struct pingpong_context* ctx, MessageData* messageData, enum ib
             .wr.rdma.rkey        = messageData->rkey,
             .next        = NULL
     };
-
+    printf("-------------pp_post_rdma_end------------\n");
     return ibv_post_send(ctx->qp, &wr, &bad_wr);
 }
