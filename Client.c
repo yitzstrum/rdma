@@ -189,6 +189,7 @@ int kv_get(void *obj, const char *key, char **value)
     buf_pointer = copy_message_data_to_buf(buf_pointer, keySize, 0, GET, EAGER,
                                            NULL, 0, 0);
     strcpy(buf_pointer, key);
+    printf("The buffers address is: %p\n", kv_handle->ctx->buf);
 
     if (pp_post_send_get_client(kv_handle->ctx)){
         perror("Client failed to post send the request");
@@ -196,6 +197,7 @@ int kv_get(void *obj, const char *key, char **value)
     }
 
     struct ibv_wc wc;
+    printf("The buffers address is: %p\n", kv_handle->ctx->buf);
     empty_cq(kv_handle, &wc, CLIENT_RECEIVE);
     printf("-------------empty_cq_end-------------\n");
 
