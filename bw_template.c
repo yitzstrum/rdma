@@ -550,7 +550,7 @@ char* copy_message_data_to_buf(char* buf_pointer, size_t keySize, size_t valueSi
 char* get_message_data(char* buffer, MessageData* messageData){
     printf("-------------get_message_data-------------start-------------\n");
 
-    printf("The buffers address is: %s\n", buffer);
+    printf("The buffers address is: %p\n", buffer);
 
     memcpy(messageData, buffer, sizeof(MessageData));
 

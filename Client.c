@@ -199,6 +199,8 @@ int kv_get(void *obj, const char *key, char **value)
     printf("-------------empty_cq_end-------------\n");
 
     MessageData* messageData = malloc(sizeof(MessageData));
+    printf("Message Data's address: %p\n", messageData);
+    printf("The buffers address is: %p\n", kv_handle->ctx->buf);
     char* data = get_message_data(kv_handle->ctx->buf, messageData);
 
 
