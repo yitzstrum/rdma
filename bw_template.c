@@ -483,7 +483,7 @@ int empty_cq(KvHandle* kv_handle, struct ibv_wc *wc, int stopCondition)
             }
         } while (ne < 1);
 
-        if (wc->opcode == IBV_WC_RECV && --kv_handle->ctx == 0)
+        if (wc->opcode == IBV_WC_RECV && --kv_handle->ctx->routs == 0)
         {
             if (restore_post_receive_queue(kv_handle->ctx))
             {
