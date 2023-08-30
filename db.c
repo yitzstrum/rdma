@@ -147,7 +147,7 @@ int hashTable_release_lock(const char* key, HashTable* table)
     {
         return 1;
     }
-    if (--entry->sem_lock == 0 && entry->locked_value)
+    if (--entry->sem_lock == 0 && entry->locked_value != NULL)
     {
         printf("insert locked value into entry value\n");
         free(entry->value);
