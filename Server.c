@@ -326,6 +326,7 @@ int kv_get_server(KvHandle *kv_handle, MessageData* messageData, char* data){
 
 int rdma_read_returned(KvHandle* kv_handle, uint64_t wr_id, int client_id)
 {
+    printf("-------------rdma_read_returned-------------\n");
     MessageData messageData;
     memset(&messageData, 0, sizeof(MessageData));
     messageData.fin = 1;
@@ -336,6 +337,7 @@ int rdma_read_returned(KvHandle* kv_handle, uint64_t wr_id, int client_id)
         return 1;
     }
 
+    printf("wr_id: %llu\n", wr_id);
     Resource resource = kv_handle->clients_ctx[client_id]->resources[wr_id];
     printf("-------------hash_table_set--------------------------\n");
     printf("The key is: %s\n", resource.key_buffer);
@@ -383,7 +385,6 @@ int process(KvHandle *kv_handle){
     printf("opcode: %d\n", wc.opcode);
     if (wc.opcode == IBV_WC_RDMA_READ)
     {
-        printf("-------------rdma_read_returned-------------\n");
         return rdma_read_returned(kv_handle, wc.wr_id, client_id);
     }
 
