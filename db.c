@@ -130,11 +130,11 @@ int hashTable_set_lock(const char* key, HashTable* table)
 {
     printf("----------hashTable_set_lock----------\n");
     KeyValuePair* entry = hashTable_get_entry(key, table);
-    printf("entry->val: %s\n", entry->value);
     if (entry == NULL)
     {
         return 1;
     }
+    printf("entry->val: %s\n", entry->value);
     entry->sem_lock ++;
     return 0;
 }
