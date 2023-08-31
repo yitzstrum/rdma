@@ -196,13 +196,9 @@ int kv_get(void *obj, const char *key, char **value)
     struct ibv_wc wc;
     empty_cq(kv_handle, &wc, CLIENT_RECEIVE);
     printf("-------------empty_cq_end-------------\n");
-
     MessageData* messageData = malloc(sizeof(MessageData));
     char* data = get_message_data(kv_handle->ctx->buf, messageData);
 
-
-//    printf("Message Protocol -> %u\n", messageData.Protocol);
-//    printf("The client received the following value: %s\n", data);
     switch (messageData->Protocol) {
         case EAGER:
             return eager_get(messageData, data, value);
@@ -238,6 +234,11 @@ void kv_release(char* value)
     free(value);
 }
 
-int kv_close(void *KvHandle){
-    return 1;
+int kv_close(void *obj){
+    KvHandle* kv_handle = (KvHandle *) obj;
+    if (pp_close_ctx(kv_handle->ctx))
+    {
+        return  1;
+    }
+    return 0;
 }

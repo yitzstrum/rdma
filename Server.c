@@ -188,7 +188,7 @@ int eager_get_server(KvHandle *kv_handle, MessageData* messageData, char* value,
     hashTable_release_lock(key, kv_handle->hashTable);
 
     free_and_reset_ptr(key);
-    if (pp_post_send_server(kv_handle, kv_handle->clients_ctx[messageData->client_id], NULL, 1))
+    if (pp_post_send(kv_handle->clients_ctx[messageData->client_id]))
     {
         perror("Server failed to send the value");
         return 1;

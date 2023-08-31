@@ -105,20 +105,18 @@ typedef struct KvHandle {
 //--------------------------------------------------------init--------------------------------------------------------
 int init_dev_list(KvHandle* my_kv);
 int init_context(KvHandle* my_kv);
-struct ibv_cq* init_cq(KvHandle *networkContext);
-void init_resource2(struct pingpong_context *ctx);
-int init_pd(struct pingpong_context *ctx, KvHandle* networkContext);
-int init_buf(struct pingpong_context *ctx, KvHandle* pHandler, int page_size);
-//int init_mr(struct pingpong_context *ctx, size_t size, enum ibv_access_flags access);
+struct ibv_cq* init_cq(KvHandle *kv_handle);
+int init_pd(struct pingpong_context *ctx, KvHandle* kv_handle);
+int init_buf(struct pingpong_context *ctx, KvHandle* kv_handle, int page_size);
 struct ibv_mr* init_mr(struct ibv_pd* pd, void* buf, size_t size, enum ibv_access_flags access);
 struct ibv_qp* init_qp(struct pingpong_context* ctx);
 struct pingpong_context *pp_init_ctx(KvHandle* kv_handle, struct ibv_cq* cq);
-int get_port_info(KvHandle* networkContext);
-int get_local_lid(KvHandle* networkContext);
-int check_gidX(KvHandle* networkContext);
+int get_port_info(KvHandle* kv_handle);
+int get_local_lid(KvHandle* kv_handle);
+int check_gidX(KvHandle* kv_handle);
 int pp_post_recv_client(struct pingpong_context *ctx, int n);
 int init_client_post_recv(KvHandle* networkContext);
-int init_network_context(KvHandle* networkContext, const char* servername);
+int init_network_context(KvHandle* kv_handle, const char* servername);
 
 
 //------------------------------------------------------connect------------------------------------------------------
@@ -135,19 +133,14 @@ int pull_cq(KvHandle * kv_handle, struct ibv_wc *wc, int iters);
 int pp_post_send(struct pingpong_context *ctx);
 
 
-//set and get
-char* copy_message_data_to_buf(char* buf_pointer, size_t keySize, size_t valueSize, enum OperationType operation, enum Protocol protocol, void* value_address, uint32_t rkey, int wr_id);
+//-------------------------------------------------MessageData handlers-------------------------------------------------
+char* copy_message_data_to_buf(char* buf_pointer, size_t keySize, size_t valueSize, enum OperationType operation,
+        enum Protocol protocol, void* value_address, uint32_t rkey, int wr_id);
 char* get_message_data(char* buffer, MessageData* messageData);
-int pp_post_send_server(KvHandle *kv_handle, struct pingpong_context* ctx, struct ibv_wc* wc, int iters);
 
-//server function
 
 int pp_post_recv_server(struct pingpong_context *ctx, int n);
-
 struct pingpong_dest *pp_server_exch_dest(struct ibv_qp* qp, const struct pingpong_dest *my_dest, int sgid_idx);
-
-int get_client_identifier(KvHandle * pHandler, uint32_t src_qp);
-
 int pp_post_recv(struct pingpong_context *ctx, int resource_idx);
 int pp_post_rdma(struct pingpong_context* ctx, MessageData* messageData, enum ibv_wr_opcode opcode,uintptr_t buffer_address, int wr_id);
 int init_resource(Resource* resource, struct ibv_pd* pd, size_t size,enum ibv_access_flags access);
