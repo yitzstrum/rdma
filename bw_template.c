@@ -541,19 +541,7 @@ char* copy_message_data_to_buf(char* buf_pointer, size_t keySize, size_t valueSi
 }
 
 char* get_message_data(char* buffer, MessageData* messageData){
-    printf("-------------get_message_data-------------start-------------\n");
-
-    printf("The buffers address is: %p\n", buffer);
-
     memcpy(messageData, buffer, sizeof(MessageData));
-
-    printf("Protocol: %u\n", messageData->Protocol);
-    printf("operationType: %u\n", messageData->operationType);
-    printf("keySize: %zu\n", messageData->keySize);
-    printf("valueSize: %zu\n", messageData->valueSize);
-    printf("Value Address: %p\n", messageData->value_address);
-    printf("-------------get_message_data-------------end-------------\n");
-
     return buffer + sizeof(MessageData);
 }
 
@@ -718,11 +706,6 @@ struct pingpong_dest *pp_server_exch_dest(struct ibv_qp* qp,
 int pp_post_rdma(struct pingpong_context* ctx, MessageData* messageData, enum ibv_wr_opcode opcode,
         uintptr_t buffer_address, int wr_id)
 {
-    printf("-------------pp_post_rdma------------\n");
-    printf("buffer address: %lu\n", buffer_address);
-    printf("value size: %lu\n", messageData->valueSize);
-    printf("value address: %lu\n", (uintptr_t)messageData->value_address);
-
     struct ibv_sge list = {
             .addr   = buffer_address,
             .length = messageData->valueSize,
@@ -740,7 +723,6 @@ int pp_post_rdma(struct pingpong_context* ctx, MessageData* messageData, enum ib
             .wr.rdma.rkey        = messageData->rkey,
             .next        = NULL
     };
-    printf("-------------pp_post_rdma_end------------\n");
     return ibv_post_send(ctx->qp, &wr, &bad_wr);
 }
 

@@ -67,7 +67,6 @@ int eager_set(KvHandle* kv_handle, const char* key, const char* value, size_t ke
 
 int eager_get(MessageData* messageData, char* data, char** value)
 {
-    printf("-------------eager_get-------------start-------------\n");
     *value = malloc(messageData->valueSize);
     if (!*value) {return 1;}
     memcpy(*value, data, messageData->valueSize);
@@ -76,8 +75,6 @@ int eager_get(MessageData* messageData, char* data, char** value)
 
 // This function creates a buffer and mr for the value
 int init_value(KvHandle* kv_handle, Resource* resources, const char* value){
-    printf("-----------init_value-----------\n");
-    printf("The value is: %s\n", value);
     size_t valSize = strlen(value) + 1;
     resources->value_buffer = malloc(valSize);
     strcpy(resources->value_buffer, value);
@@ -106,9 +103,6 @@ int rendezvous_set(KvHandle* kv_handle, const char* key, const char* value, size
     buf_pointer = copy_message_data_to_buf(buf_pointer, keySize, valueSize, SET, RENDEZVOUS,
                                            value_address, rkey, kv_handle->ctx->count_send);
 
-    printf("Value Address - P: %p\n", value_address);
-    printf("rkey: %u\n", rkey);
-
     strcpy(buf_pointer, key);
     buf_pointer += keySize;
 
@@ -122,8 +116,6 @@ int rendezvous_set(KvHandle* kv_handle, const char* key, const char* value, size
 
 int rendezvous_get(KvHandle* kv_handle, MessageData* messageData, char** value)
 {
-    printf("-------------rendezvous_get------------\n");
-
     *value = malloc(messageData->valueSize);
     uintptr_t buffer_address = (uintptr_t) *value;
 
@@ -156,8 +148,6 @@ int rendezvous_get(KvHandle* kv_handle, MessageData* messageData, char** value)
         fprintf(stderr, "Failed to send FIN");
         return 1;
     }
-
-    printf("value get from rend: %s\n", *value);
     return 0;
 }
 
@@ -181,7 +171,6 @@ int kv_set(void* obj, const char *key, const char *value)
 
 int kv_get(void *obj, const char *key, char **value)
 {
-    printf("-------------kv_get_client------------\n");
     size_t keySize = strlen(key) + 1;
     KvHandle* kv_handle = (KvHandle *) obj;
     char* buf_pointer = kv_handle->ctx->buf;
@@ -195,7 +184,6 @@ int kv_get(void *obj, const char *key, char **value)
 
     struct ibv_wc wc;
     empty_cq(kv_handle, &wc, CLIENT_RECEIVE);
-    printf("-------------empty_cq_end-------------\n");
     MessageData* messageData = malloc(sizeof(MessageData));
     char* data = get_message_data(kv_handle->ctx->buf, messageData);
     if (messageData->fin){
