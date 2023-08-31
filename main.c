@@ -153,38 +153,26 @@ int main(int argc, char *argv[])
                 return 1;
             }
 
-//            for (int message_size = 4; message_size <= MAX_RENDEZVOUS_MSG_SIZE; message_size *= 2) {
-//                measure_set_throughput_by_message_size(kv_handle, message_size);
+            for (int message_size = 4; message_size <= MAX_EAGER_SIZE; message_size *= 2) {
+                measure_set_throughput_by_message_size(kv_handle, message_size);
+            }
+
+//            const char *key = "key";
+//            const char *value = "value";
+//
+//            if (kv_set((void *)kv_handle, key, value) != 0)
+//            {
+//                return 1;
 //            }
-
-            const char *key = "key";
-            const char *value = "value";
-            const char *newValue = "newVal";
-
-            if (kv_set((void *)kv_handle, key, value) != 0)
-            {
-                return 1;
-            }
-
-            char *received_value = NULL;
-
-            for (int i = 0; i < 10; ++i) {
-                if (kv_get((void *)kv_handle, key, &received_value) != 0)
-                {
-                    fprintf(stderr, "Client failed to preform get\n");
-                    return 1;
-                }
-
-                if (kv_set((void *)kv_handle, key, newValue) != 0)
-                {
-                    return 1;
-                }
-                printf("%s: %s\n", key, received_value);
-
-            }
-
-
-            kv_release(received_value);
+//
+//            char *received_value = NULL;
+//            if (kv_get((void *)kv_handle, key, &received_value) != 0)
+//            {
+//                fprintf(stderr, "Client failed to preform get\n");
+//                return 1;
+//            }
+//
+//            kv_release(received_value);
         }
 
         // Server
