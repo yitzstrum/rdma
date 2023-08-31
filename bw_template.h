@@ -147,6 +147,8 @@ int init_resource(Resource* resource, struct ibv_pd* pd, size_t size,enum ibv_ac
 
 //----------------------------------------------------Release Funcs----------------------------------------------------
 
+void free_and_reset_ptr(void* resource);
+void free_and_reset_mr(struct ibv_mr* mr);
 int pp_close_ctx(struct pingpong_context *ctx);
 void release_kv_handler(KvHandle** kv_handle);
 

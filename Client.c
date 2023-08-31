@@ -198,6 +198,13 @@ int kv_get(void *obj, const char *key, char **value)
     printf("-------------empty_cq_end-------------\n");
     MessageData* messageData = malloc(sizeof(MessageData));
     char* data = get_message_data(kv_handle->ctx->buf, messageData);
+    if (messageData->fin){
+        Resource* resource = &kv_handle->ctx->resources[messageData->wr_id];
+        free_and_reset_ptr(resource->value_buffer);
+        free_and_reset_ptr(resource->buf);
+        free_and_reset_mr(resource->value_mr);
+        free_and_reset_mr(resource->mr);
+    }
 
     switch (messageData->Protocol) {
         case EAGER:

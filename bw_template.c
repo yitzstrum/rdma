@@ -780,6 +780,19 @@ int pp_close_ctx(struct pingpong_context *ctx)
     return 0;
 }
 
+
+void free_and_reset_ptr(void* resource)
+{
+    free(resource);
+    resource = NULL;
+}
+
+void free_and_reset_mr(struct ibv_mr* mr)
+{
+    ibv_dereg_mr(mr);
+    mr = NULL;
+}
+
 void release_kv_handler(KvHandle** kv_handle)
 {
     if (kv_handle)

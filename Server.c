@@ -97,18 +97,6 @@ int get_client_id(KvHandle *kv_handle, struct ibv_wc* wc){
     return -1;
 }
 
-void free_and_reset_ptr(void* resource)
-{
-    free(resource);
-    resource = NULL;
-}
-
-void free_and_reset_mr(struct ibv_mr* mr)
-{
-    ibv_dereg_mr(mr);
-    mr = NULL;
-}
-
 // When we receive the fin message from the client we release the Resource corresponding to the wr_id
 void free_resource(KvHandle *kv_handle, int client_id, int wr_id)
 {
@@ -133,9 +121,6 @@ char* get_job(KvHandle *kv_handle, MessageData* messageData, struct ibv_wc* wc){
     if (messageData->fin)
     {
         free_resource(kv_handle, client_id, messageData->wr_id);
-        Resource* resource = &kv_handle->clients_ctx[client_id]->resources[wr_id];
-        free_and_reset_ptr(resource->buf);
-        free_and_reset_mr(resource->mr);
         return NULL;
     }
 
@@ -324,12 +309,13 @@ int kv_get_server(KvHandle *kv_handle, MessageData* messageData, char* data){
     return rendezvous_get_server(kv_handle, messageData,  dataSize, value, key);
 }
 
-int rdma_read_returned(KvHandle* kv_handle, uint64_t wr_id, int client_id)
+int rdma_read_returned(KvHandle* kv_handle, int wr_id, int client_id)
 {
     printf("-------------rdma_read_returned-------------\n");
     MessageData messageData;
     memset(&messageData, 0, sizeof(MessageData));
     messageData.fin = 1;
+    messageData.wr_id = wr_id;
     memcpy(kv_handle->clients_ctx[client_id]->buf, &messageData, sizeof(MessageData));
     if (pp_post_send(kv_handle->clients_ctx[client_id]))
     {
