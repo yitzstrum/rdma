@@ -34,7 +34,6 @@ void generate_random_string(char** str, int key_length) {
 int warmup(KvHandle * pHandler)
 {
     const int value_size = MAX_EAGER_SIZE - KEY_LEN - 1;
-
     char *value = malloc(value_size);
     memset(value, 'A', value_size - 1);
     value[value_size - 1] = '\0';
@@ -168,13 +167,15 @@ int main(int argc, char *argv[])
 
             char *received_value = NULL;
 
-            sleep(5);
-            if (kv_get((void *)kv_handle, key, &received_value) != 0)
-            {
-                fprintf(stderr, "Client failed to preform get\n");
-                return 1;
+            for (int i = 0; i < 10; ++i) {
+                if (kv_get((void *)kv_handle, key, &received_value) != 0)
+                {
+                    fprintf(stderr, "Client failed to preform get\n");
+                    return 1;
+                }
+                printf("%s: %s\n", key, received_value);
+
             }
-            printf("%s: %s\n", key, received_value);
 
 
             kv_release(received_value);
