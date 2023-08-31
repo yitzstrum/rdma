@@ -159,6 +159,7 @@ int main(int argc, char *argv[])
 
             const char *key = "key";
             const char *value = "value";
+            const char *newValue = "newVal";
 
             if (kv_set((void *)kv_handle, key, value) != 0)
             {
@@ -171,6 +172,11 @@ int main(int argc, char *argv[])
                 if (kv_get((void *)kv_handle, key, &received_value) != 0)
                 {
                     fprintf(stderr, "Client failed to preform get\n");
+                    return 1;
+                }
+
+                if (kv_set((void *)kv_handle, key, newValue) != 0)
+                {
                     return 1;
                 }
                 printf("%s: %s\n", key, received_value);
